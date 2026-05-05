@@ -57,6 +57,7 @@ export default function PlayPage() {
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [submitResult, setSubmitResult] = useState<GameSubmitResponse | null>(null);
   const [username, setUsername] = useState<string>("Oyuncu");
+  const [isMuted, setIsMuted] = useState(false);
   
   const playerRef = useRef<any>(null);
 
@@ -145,10 +146,24 @@ export default function PlayPage() {
           rel: 0
         },
         events: { 
-          onReady: (e: any) => e.target.playVideo()
+          onReady: (e: any) => {
+            if (isMuted) e.target.mute();
+            e.target.playVideo();
+          }
         }
       });
     }
+  };
+
+  const toggleMute = () => {
+    setIsMuted((prev) => {
+      const newMuted = !prev;
+      if (playerRef.current && playerRef.current.mute && playerRef.current.unMute) {
+        if (newMuted) playerRef.current.mute();
+        else playerRef.current.unMute();
+      }
+      return newMuted;
+    });
   };
 
   const handleSelectOption = (optionId: string) => {
@@ -291,7 +306,9 @@ export default function PlayPage() {
           ⏱ {formatTimer(elapsedMs)}
         </div>
         <div className="game-actions">
-          <button className="action-icon-btn">🔊</button>
+          <button className="action-icon-btn" onClick={toggleMute}>
+            {isMuted ? "🔇" : "🔊"}
+          </button>
           <button className="action-pill-btn">🔀 50:50 (2)</button>
           <button className="action-pill-btn">👁 Göster (1)</button>
           <button className="action-pill-btn user-hash-btn">👤 {username}</button>
