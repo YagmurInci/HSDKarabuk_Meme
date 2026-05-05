@@ -56,6 +56,7 @@ export default function PlayPage() {
   const [elapsedMs, setElapsedMs] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [submitResult, setSubmitResult] = useState<GameSubmitResponse | null>(null);
+  const [username, setUsername] = useState<string>("Oyuncu");
   
   const playerRef = useRef<any>(null);
 
@@ -65,6 +66,15 @@ export default function PlayPage() {
     const seconds = totalSeconds % 60;
     return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
   };
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedName = localStorage.getItem("meme_guesser_username");
+      if (storedName) {
+        setUsername(storedName);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -284,7 +294,7 @@ export default function PlayPage() {
           <button className="action-icon-btn">🔊</button>
           <button className="action-pill-btn">🔀 50:50 (2)</button>
           <button className="action-pill-btn">👁 Göster (1)</button>
-          <button className="action-pill-btn user-hash-btn">dkfjfnrelkgvjn</button>
+          <button className="action-pill-btn user-hash-btn">👤 {username}</button>
         </div>
       </div>
 
