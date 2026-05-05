@@ -60,6 +60,23 @@ export default function PlayPage() {
   const [isMuted, setIsMuted] = useState(false);
   
   const playerRef = useRef<any>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.muted = isMuted;
+    }
+  }, [isMuted]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      if (phase === "question") {
+        audioRef.current.play().catch((err) => console.log("Audio autoplay prevented:", err));
+      } else {
+        audioRef.current.pause();
+      }
+    }
+  }, [phase]);
 
   const formatTimer = (ms: number): string => {
     const totalSeconds = Math.floor(ms / 1000);
@@ -299,6 +316,8 @@ export default function PlayPage() {
 
   return (
     <div id="game-layout">
+      {/* Arka plan müziği (public klasöründe bg-music.mp3 olmalıdır) */}
+      <audio ref={audioRef} src="/bg-music.mp3" loop />
       
       {/* Üst Bar */}
       <div id="game-header-top">
