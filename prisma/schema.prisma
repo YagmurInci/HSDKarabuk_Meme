@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// MEME GUESSER DATABASE SCHEMA
+// Baş Mimar: Şükrü | Son güncelleme: 2026-05-05
+// ============================================
+
+/// YouTube meme video klibi
+model Meme {
+  id              String   @id @default(cuid())
+  youtubeUrl      String   /// YouTube video URL'si (tam URL veya video ID)
+  startTime       Int      /// Videonun başlangıç saniyesi
+  endTime         Int      /// Videonun bitiş saniyesi
+  correctOptionId String   /// Doğru cevabın Option ID'si
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  correctOption   Option   @relation("CorrectAnswer", fields: [correctOptionId], references: [id])
+
+  @@map("memes")
+}
+
+/// Şık havuzu (doğru ve yanlış cevaplar)
+model Option {
+  id        String   @id @default(cuid())
+  text      String   @unique /// Şık metni (ör: "Dank Meme", "Rickroll")
+  createdAt DateTime @default(now())
+
+  /// Bu şıkkın doğru cevap olduğu memeler
+  correctForMemes Meme[] @relation("CorrectAnswer")
+
+  @@map("options")
+}
+
+/// Oyun oturumu (Anti-Cheat)
+model GameSession {
+  id           String    @id @default(cuid())
+  sessionToken String    @unique /// HMAC imzalı token
+  memeIds      String[]  /// Bu oturumda sunulan meme ID'leri (sıralı)
+  startedAt    DateTime  @default(now())
+  expiresAt    DateTime  /// Session son kullanma zamanı
+  completed    Boolean   @default(false) /// Tekrar kullanım engeli
+  ipAddress    String?   /// Rate limiting ve analiz için
+
+  /// İlişkili skor kaydı
+  leaderboardEntry LeaderboardEntry?
+
+  @@map("game_sessions")
+}
+
+/// Liderlik tablosu girişi
+model LeaderboardEntry {
+  id           String   @id @default(cuid())
+  username     String   /// Oyuncu adı (validasyonlu)
+  score        Int      /// Hesaplanmış skor (server-side)
+  correctCount Int      /// Doğru cevap sayısı
+  totalTime    Int      /// Toplam süre (milisaniye)
+  sessionId    String   @unique /// Hangi GameSession'dan geldiği
+  createdAt    DateTime @default(now())
+
+  session      GameSession @relation(fields: [sessionId], references: [id])
+
+  @@index([score(sort: Desc)]) /// Sıralama için index
+  @@map("leaderboard_entries")
+}
