@@ -54,6 +54,11 @@ export default function BackofficePage() {
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
 
+  // --- IMPORT ---
+  const [importing, setImporting] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [importResult, setImportResult] = useState<any>(null);
+
   // --- STATS ---
   const memeCount = memes.length;
   const uniqueAnswers = new Set(memes.map((m) => m.correctOption?.text)).size;
@@ -176,6 +181,26 @@ export default function BackofficePage() {
     else alert("Silinemedi!");
   };
 
+  // Google Sheets import
+  const handleImportSheets = async () => {
+    if (!window.confirm("Google Sheets'ten tüm yeni meme'ler aktarılacak. Devam?")) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const res = await fetch("/api/admin/import-sheets", {
+        method: "POST",
+        headers: { "x-admin-password": password },
+      });
+      const data = await res.json();
+      setImportResult(data);
+      if (data.imported > 0) fetchMemes();
+    } catch {
+      setImportResult({ error: "Bağlantı hatası!" });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   // ============================================
   // RENDER
   // ============================================
@@ -233,6 +258,59 @@ export default function BackofficePage() {
             </div>
           </div>
         </header>
+
+        {/* --- GOOGLE SHEETS İMPORT --- */}
+        <section className="admin-card">
+          <div className="admin-card-header">
+            <div>
+              <h2 className="admin-card-title">📊 Google Sheets İçe Aktar</h2>
+              <p style={{ fontSize: "0.8rem", color: "#888", margin: "4px 0 0" }}>
+                Takımın sheets&apos;e eklediği meme&apos;ler otomatik çekilir. Duplikatlar atlanır.
+              </p>
+            </div>
+            <button
+              onClick={handleImportSheets}
+              className="admin-btn admin-btn-primary"
+              disabled={importing}
+              style={{ minWidth: "140px" }}
+            >
+              {importing ? "Aktarılıyor..." : "Sheets'ten Çek"}
+            </button>
+          </div>
+
+          {importResult && (
+            <div style={{ marginTop: "1rem" }}>
+              {importResult.error && !importResult.success ? (
+                <div className="admin-error-text">{importResult.error}</div>
+              ) : (
+                <div>
+                  <div style={{ display: "flex", gap: "1rem", marginBottom: "0.75rem" }}>
+                    <span style={{ color: "#22c55e", fontWeight: "bold" }}>
+                      ✅ {importResult.imported} aktarıldı
+                    </span>
+                    <span style={{ color: "#888" }}>
+                      ⏭ {importResult.skipped} atlandı
+                    </span>
+                  </div>
+                  {importResult.details?.length > 0 && (
+                    <div style={{ maxHeight: "200px", overflow: "auto", fontSize: "0.8rem" }}>
+                      {importResult.details.map((d: { name: string; status: string; reason?: string }, i: number) => (
+                        <div key={i} style={{ 
+                          padding: "4px 8px", 
+                          borderBottom: "1px solid #222",
+                          color: d.status === "imported" ? "#22c55e" : d.status === "skipped" ? "#888" : "#ef4444"
+                        }}>
+                          {d.status === "imported" ? "✅" : d.status === "skipped" ? "⏭" : "❌"} {d.name}
+                          {d.reason && <span style={{ color: "#666", marginLeft: "8px" }}>({d.reason})</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
 
         {/* --- MEME EKLEME FORMU --- */}
         <section className="admin-card">

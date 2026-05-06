@@ -15,9 +15,12 @@ datasource db {
 model Meme {
   id              String   @id @default(cuid())
   youtubeUrl      String   /// YouTube video URL'si (tam URL veya video ID)
-  startTime       Int      /// Videonun başlangıç saniyesi
-  endTime         Int      /// Videonun bitiş saniyesi
+  imageUrl        String?  /// Meme görseli URL'si (opsiyonel, soru ekranı için)
+  startTime       Int      @default(0)  /// Videonun başlangıç saniyesi
+  endTime         Int      @default(60) /// Videonun bitiş saniyesi
   correctOptionId String   /// Doğru cevabın Option ID'si
+  timesShown      Int      @default(0)  /// Kaç kez gösterildi (weighted selection)
+  timesCorrect    Int      @default(0)  /// Kaç kez doğru bilinmesi (zorluk takibi)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -60,12 +63,26 @@ model LeaderboardEntry {
   username     String   /// Oyuncu adı (validasyonlu)
   score        Int      /// Hesaplanmış skor (server-side)
   correctCount Int      /// Doğru cevap sayısı
-  totalTime    Int      /// Toplam süre (milisaniye)
+  totalTime    Int      /// Toplam düşünme süresi (milisaniye, video izleme hariç)
   sessionId    String   @unique /// Hangi GameSession'dan geldiği
   createdAt    DateTime @default(now())
 
-  session      GameSession @relation(fields: [sessionId], references: [id])
+  session      GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([score(sort: Desc)]) /// Sıralama için index
   @@map("leaderboard_entries")
 }
+
+/// 3 saatlik periyotlarla kaydedilen leaderboard arşivi
+model LeaderboardArchive {
+  id         String   @id @default(cuid())
+  snapshot   String   /// JSON: Top 50 oyuncunun [{username, score, correctCount, totalTime}]
+  entryCount Int      /// Arşivlenen toplam kayıt sayısı
+  topPlayer  String?  /// 1. sıradaki oyuncu
+  topScore   Int      @default(0) /// 1. sıradaki skor
+  archivedAt DateTime @default(now()) /// Arşivleme zamanı
+
+  @@index([archivedAt(sort: Desc)])
+  @@map("leaderboard_archives")
+}
+

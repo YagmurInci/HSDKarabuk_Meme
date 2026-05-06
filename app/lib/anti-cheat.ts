@@ -71,7 +71,12 @@ export async function validateSession(
 
 /**
  * Yeni bir oyun session'ı oluşturur.
- * Rastgele 10 meme seçer ve HMAC token üretir.
+ * Ağırlıklı rastgele 10 meme seçer ve HMAC token üretir.
+ * 
+ * ★ WEIGHTED RANDOM SELECTION:
+ * - Az gösterilen memeler daha yüksek ağırlık alır (çeşitlilik)
+ * - Çok bilinen memeler daha düşük ağırlık alır (zorluk dengesi)
+ * - Tamamen rastgele değil ama öngörülemez (RANDOM() * weight)
  */
 export async function createGameSession(ipAddress?: string) {
   // 1. Toplam meme sayısını kontrol et
@@ -82,14 +87,27 @@ export async function createGameSession(ipAddress?: string) {
     );
   }
 
-  // 2. Rastgele meme seçimi (PostgreSQL random ordering)
+  // 2. Ağırlıklı rastgele meme seçimi
+  //    Formül: RANDOM() * (1.0 / (1 + timesShown * 0.3 + timesCorrect * 0.5))
+  //    - timesShown az → ağırlık yüksek → daha çok seçilir
+  //    - timesCorrect çok → ağırlık düşük → daha az seçilir (zaten herkes biliyor)
+  //    - RANDOM() çarpımı → hala öngörülemez, ama bias'lı
   const memes = await prisma.$queryRawUnsafe<{ id: string }[]>(
-    `SELECT id FROM memes ORDER BY RANDOM() LIMIT $1`,
+    `SELECT id FROM memes 
+     ORDER BY RANDOM() * (1.0 / (1 + "timesShown" * 0.3 + "timesCorrect" * 0.5))
+     DESC
+     LIMIT $1`,
     GAME_CONFIG.QUESTIONS_PER_GAME
   );
   const memeIds = memes.map((m) => m.id);
 
-  // 3. Session oluştur
+  // 3. Seçilen memelerin timesShown sayacını artır (atomic)
+  await prisma.meme.updateMany({
+    where: { id: { in: memeIds } },
+    data: { timesShown: { increment: 1 } },
+  });
+
+  // 4. Session oluştur
   const now = new Date();
   const expiresAt = new Date(now.getTime() + GAME_CONFIG.SESSION_TTL_MS);
 
@@ -103,7 +121,7 @@ export async function createGameSession(ipAddress?: string) {
     },
   });
 
-  // 4. HMAC token oluştur (sessionId gerekli olduğu için create'den sonra)
+  // 5. HMAC token oluştur (sessionId gerekli olduğu için create'den sonra)
   const sessionToken = createSessionToken(session.id, memeIds, now);
   await prisma.gameSession.update({
     where: { id: session.id },

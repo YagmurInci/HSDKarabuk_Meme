@@ -62,7 +62,7 @@ export interface LeaderboardItem {
 /** API Hata yanıtı (tüm endpointlerde ortak) */
 export interface ApiError {
   error: string;
-  code: "INVALID_SESSION" | "SESSION_EXPIRED" | "SESSION_USED" | "RATE_LIMITED" | "VALIDATION_ERROR" | "UNAUTHORIZED" | "INTERNAL_ERROR";
+  code: "INVALID_SESSION" | "SESSION_EXPIRED" | "SESSION_USED" | "RATE_LIMITED" | "VALIDATION_ERROR" | "UNAUTHORIZED" | "INTERNAL_ERROR" | "SHEETS_ERROR";
 }
 
 // ---- Game Constants ----

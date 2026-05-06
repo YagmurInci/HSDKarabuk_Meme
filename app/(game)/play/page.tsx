@@ -1,16 +1,43 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import type { 
-  GameStartResponse, 
-  MemeForClient, 
+import { useState, useEffect, useRef, useCallback } from "react";
+import type {
+  GameStartResponse,
+  MemeForClient,
   GameSubmitResponse,
-  PlayerAnswer
+  PlayerAnswer,
 } from "@/app/lib/types";
 import "./play.css";
 
-type GamePhase = "loading" | "question" | "video" | "result" | "error";
+// ============================================
+// OYUN AKIŞI:
+// 1. Meme thumbnail gösterilir → Timer BAŞLAR
+// 2. Oyuncu şık seçer → "Cevapla" basar → Timer DURUR
+// 3. Doğru/yanlış feedback + meme videosu oynar (süre sayılmaz)
+// 4. "Devam Et" → Sonraki soru → Timer yeniden başlar
+// 5. 10 soru sonunda submit
+//
+// Süre Hesabı: SADECE soru ekranındaki düşünme süresi.
+// Video izleme süresi hesaba KATILMAZ.
+// ============================================
+
+type GamePhase = "loading" | "question" | "answered" | "video" | "result" | "error";
+
+const MOCK_MEMES: MemeForClient[] = [
+  {
+    id: "mock1",
+    youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    startTime: 42,
+    endTime: 46,
+    options: [
+      { id: "o1", text: "Rick Astley - Never Gonna Give You Up" },
+      { id: "o2", text: "Darude - Sandstorm" },
+      { id: "o3", text: "Smash Mouth - All Star" },
+      { id: "o4", text: "Trololo Song" }
+    ]
+  }
+];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare global {
@@ -22,72 +49,149 @@ declare global {
 }
 
 export default function PlayPage() {
+  // --- State ---
   const [phase, setPhase] = useState<GamePhase>("loading");
   const [memes, setMemes] = useState<MemeForClient[]>([]);
   const [sessionToken, setSessionToken] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
   const [answers, setAnswers] = useState<PlayerAnswer[]>([]);
-  const [elapsedMs, setElapsedMs] = useState(0);
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [submitResult, setSubmitResult] = useState<GameSubmitResponse | null>(null);
   const [username, setUsername] = useState<string>("Oyuncu");
   const [isMuted, setIsMuted] = useState(false);
   const [isReadyToStart, setIsReadyToStart] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
-  
+  const [submitResult, setSubmitResult] = useState<GameSubmitResponse | null>(null);
+
+  // --- Zamanlama (sadece düşünme süresi) ---
+  const [totalThinkMs, setTotalThinkMs] = useState(0); // toplam düşünme süresi
+  const questionStartRef = useRef<number>(0); // bu sorunun başlangıç timestamp'i
+  const isTimerActiveRef = useRef(false);
+  const [displayMs, setDisplayMs] = useState(0); // gösterge için
+
+  // --- YouTube ---
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const playerRef = useRef<any>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const correctAudioRef = useRef<HTMLAudioElement | null>(null);
 
+  // --- Derived ---
+  const currentMeme = memes[currentIndex];
+  const isLastQuestion = currentIndex + 1 === memes.length;
+
+  // Username yükle
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.muted = isMuted;
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("meme_guesser_username");
+      if (stored) setUsername(stored);
     }
-    if (correctAudioRef.current) {
-      correctAudioRef.current.muted = isMuted;
-    }
+  }, []);
+
+  // Müzik kontrolü
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.muted = isMuted;
+    if (correctAudioRef.current) correctAudioRef.current.muted = isMuted;
   }, [isMuted]);
 
   useEffect(() => {
     if (audioRef.current) {
       if (phase === "question") {
-        audioRef.current.play().catch((err) => console.log("Audio autoplay prevented:", err));
+        audioRef.current.play().catch(() => {});
       } else {
         audioRef.current.pause();
       }
     }
   }, [phase]);
 
+  // Display timer (60fps visual update)
+  useEffect(() => {
+    let raf: number;
+    const tick = () => {
+      if (isTimerActiveRef.current) {
+        const now = performance.now();
+        const elapsed = now - questionStartRef.current;
+        setDisplayMs(totalThinkMs + elapsed);
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [totalThinkMs]);
+
   const formatTimer = (ms: number): string => {
     const totalSeconds = Math.floor(ms / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
-    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    const tenths = Math.floor((ms % 1000) / 100);
+    return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${tenths}`;
   };
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedName = localStorage.getItem("meme_guesser_username");
-      if (storedName) {
-        setUsername(storedName);
-      }
+  // Timer kontrol fonksiyonları
+  const startQuestionTimer = useCallback(() => {
+    questionStartRef.current = performance.now();
+    isTimerActiveRef.current = true;
+  }, []);
+
+  const stopQuestionTimer = useCallback(() => {
+    if (isTimerActiveRef.current) {
+      const elapsed = performance.now() - questionStartRef.current;
+      setTotalThinkMs((prev) => prev + elapsed);
+      isTimerActiveRef.current = false;
     }
   }, []);
 
+  // YouTube API yükle
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isTimerRunning) {
-      interval = setInterval(() => {
-        setElapsedMs((prev) => prev + 100);
-      }, 100);
+    if (typeof window !== "undefined" && !window.YT) {
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      window.onYouTubeIframeAPIReady = () => {};
+      document.head.appendChild(tag);
     }
-    return () => clearInterval(interval);
-  }, [isTimerRunning]);
+  }, []);
 
+  const getVideoId = (url: string): string | null => {
+    try {
+      if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
+      const urlObj = new URL(url);
+      if (urlObj.hostname === "youtu.be") return urlObj.pathname.slice(1);
+      return urlObj.searchParams.get("v");
+    } catch {
+      return null;
+    }
+  };
+
+  const initYouTubePlayer = useCallback(
+    (videoId: string, start: number, end: number) => {
+      if (playerRef.current) {
+        playerRef.current.destroy();
+        playerRef.current = null;
+      }
+
+      if (window.YT && window.YT.Player) {
+        playerRef.current = new window.YT.Player("yt-player", {
+          videoId,
+          playerVars: {
+            autoplay: 1,
+            start,
+            end,
+            controls: 0,
+            rel: 0,
+            modestbranding: 1,
+          },
+          events: {
+            onReady: (e: { target: { mute: () => void; playVideo: () => void } }) => {
+              if (isMuted) e.target.mute();
+              e.target.playVideo();
+            },
+          },
+        });
+      }
+    },
+    [isMuted]
+  );
+
+  // Oyunu başlat
   useEffect(() => {
-    // AŞAMA 1 — Oyun Yükleniyor
     const startGame = async () => {
       try {
         const response = await fetch("/api/game/start", { method: "POST" });
@@ -109,71 +213,15 @@ export default function PlayPage() {
     startGame();
   }, []);
 
-  const getVideoId = (url: string) => {
-    try {
-      const urlObj = new URL(url);
-      return urlObj.searchParams.get("v");
-    } catch {
-      return null;
-    }
-  };
-
-  // Load YT API
-  useEffect(() => {
-    if (!window.YT) {
-      const tag = document.createElement("script");
-      tag.src = "https://www.youtube.com/iframe_api";
-      window.onYouTubeIframeAPIReady = () => {
-        // Ready
-      };
-      document.head.appendChild(tag);
-    }
-  }, []);
-
-  const initYouTubePlayer = (videoId: string, start: number, end: number) => {
-    if (playerRef.current) {
-      playerRef.current.destroy();
-    }
-    
-    if (window.YT && window.YT.Player) {
-      playerRef.current = new window.YT.Player("yt-player", {
-        videoId: videoId,
-        playerVars: { 
-          autoplay: 1, 
-          start: start, 
-          end: end,
-          controls: 0,
-          rel: 0
-        },
-        events: { 
-          onReady: (e: { target: { mute: () => void; playVideo: () => void } }) => {
-            if (isMuted) e.target.mute();
-            e.target.playVideo();
-          }
-        }
-      });
-    }
-  };
-
-  const toggleMute = () => {
-    setIsMuted((prev) => {
-      const newMuted = !prev;
-      if (playerRef.current && playerRef.current.mute && playerRef.current.unMute) {
-        if (newMuted) playerRef.current.mute();
-        else playerRef.current.unMute();
-      }
-      return newMuted;
-    });
-  };
-
+  // Şık seçimi
   const handleSelectOption = (optionId: string) => {
+    if (phase !== "question") return;
     setSelectedOptionId(optionId);
   };
 
+  // Cevapla butonu
   const handleSubmitAnswer = () => {
-    if (!selectedOptionId) return;
-    
-    const currentMeme = memes[currentIndex];
+    if (!selectedOptionId || !currentMeme) return;
 
     // Doğru cevap efekti
     if (correctAudioRef.current) {
@@ -181,77 +229,108 @@ export default function PlayPage() {
       correctAudioRef.current.play().catch(e => console.log(e));
     }
 
-    setAnswers(prev => [
+    // Timer'ı DURDUR (video süresi sayılmayacak)
+    stopQuestionTimer();
+
+    // Cevabı kaydet
+    setAnswers((prev) => [
       ...prev,
-      { memeId: currentMeme.id, selectedOptionId: selectedOptionId }
+      { memeId: currentMeme.id, selectedOptionId },
     ]);
-    
-    // AŞAMA 3 — YouTube Video Ekranı
-    setPhase("video");
-    setIsTimerRunning(false);
-    
+
+    // "answered" fazına geç — feedback göster
+    setPhase("answered");
+
+    // 1.5 saniye feedback göster, sonra videoya geç
     setTimeout(() => {
+      setPhase("video");
       const videoId = getVideoId(currentMeme.youtubeUrl);
       if (videoId) {
-        initYouTubePlayer(videoId, currentMeme.startTime, currentMeme.endTime);
+        setTimeout(() => {
+          initYouTubePlayer(videoId, currentMeme.startTime, currentMeme.endTime);
+        }, 100);
       }
-    }, 100);
+    }, 1500);
   };
 
+  // Devam Et / Sonraki
   const handleNext = async () => {
+    // YouTube player temizle
     if (playerRef.current) {
       playerRef.current.destroy();
       playerRef.current = null;
     }
 
     if (currentIndex + 1 < memes.length) {
-      setCurrentIndex(prev => prev + 1);
+      // Sonraki soruya geç
+      setCurrentIndex((prev) => prev + 1);
       setSelectedOptionId(null);
       setPhase("question");
-      setIsTimerRunning(true);
+      // Timer'ı yeniden başlat
+      startQuestionTimer();
     } else {
-      // AŞAMA 4 — Oyun Sonu
+      // Son soru — sonuçları gönder
       setPhase("loading");
-      const username = localStorage.getItem("meme_guesser_username") || "Oyuncu";
+      const playerName =
+        localStorage.getItem("meme_guesser_username") || "Oyuncu";
+
       try {
         const response = await fetch("/api/game/submit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             sessionToken,
-            username,
-            answers: answers,
-            timeTakenMs: elapsedMs,
+            username: playerName,
+            answers,
+            timeTakenMs: Math.round(totalThinkMs),
           }),
         });
-        
+
         if (!response.ok) throw new Error("Failed to submit game");
-        
+
         const result: GameSubmitResponse = await response.json();
         setSubmitResult(result);
         setPhase("result");
       } catch (error) {
         console.error("[PlayPage] Skor gönderme hatası:", error);
-        setErrorMessage(error instanceof Error ? error.message : "Skor gönderilemedi.");
+        setErrorMessage(
+          error instanceof Error ? error.message : "Skor gönderilemedi."
+        );
         setPhase("error");
       }
     }
   };
 
+  const toggleMute = () => {
+    setIsMuted((prev) => {
+      const next = !prev;
+      if (playerRef.current?.mute && playerRef.current?.unMute) {
+        if (next) playerRef.current.mute();
+        else playerRef.current.unMute();
+      }
+      return next;
+    });
+  };
+
+  // ============================================
+  // RENDER
+  // ============================================
+
+  // Error
   if (phase === "error") {
     return (
-      <div id="game-container">
+      <div id="game-layout">
         <div id="game-result">
-          <h2 className="result-score-big" style={{ color: "var(--error)" }}>❌</h2>
-          <p className="result-subtitle">{errorMessage || "Bir hata oluştu."}</p>
-          <button
-            className="btn-primary"
-            onClick={() => window.location.reload()}
-            style={{ marginTop: "1rem" }}
-          >
+          <h2 className="result-score-big" style={{ color: "var(--wrong-red)" }}>
+            ❌
+          </h2>
+          <p className="result-subtitle">
+            {errorMessage || "Bir hata oluştu."}
+          </p>
+          <button className="btn-primary" onClick={() => window.location.reload()}>
             Tekrar Dene
           </button>
-          <a href="/" className="btn-primary" style={{ marginTop: "0.5rem", background: "var(--surface)" }}>
+          <a href="/login" className="btn-secondary" style={{ marginTop: "0.5rem" }}>
             Ana Sayfa
           </a>
         </div>
@@ -259,6 +338,7 @@ export default function PlayPage() {
     );
   }
 
+  // Loading
   if (phase === "loading") {
     return (
       <div id="game-layout" style={{ justifyContent: "center", alignItems: "center" }}>
@@ -268,139 +348,206 @@ export default function PlayPage() {
             style={{ maxWidth: "300px", fontSize: "20px", padding: "20px" }}
             onClick={() => {
               setPhase("question");
-              setIsTimerRunning(true);
-              // Kullanıcı etkileşimi olduğu için ses artık sorunsuz çalabilir
+              // İlk soru timer'ı başlat
+              questionStartRef.current = performance.now();
+              isTimerActiveRef.current = true;
             }}
           >
             🎮 Oyuna Başla!
           </button>
         ) : (
-          <h2 style={{ color: "#fff" }}>Yükleniyor...</h2>
+          <div className="loading-screen">
+            <div className="loading-spinner" />
+            <p style={{ color: "#fff" }}>Sorular hazırlanıyor...</p>
+          </div>
         )}
       </div>
     );
   }
 
+  // Result
   if (phase === "result") {
-    let username = "Oyuncu";
-    if (typeof window !== "undefined") {
-      username = localStorage.getItem("meme_guesser_username") || "Oyuncu";
-    }
-
     return (
-      <div id="game-container">
+      <div id="game-layout">
         <div id="game-result">
-          <h2 className="result-score-big">{submitResult?.correctCount}/{submitResult?.totalQuestions}</h2>
-          <p className="result-subtitle">Toplam süre: {formatTimer(elapsedMs)} · Sıralama: #{submitResult?.rank}</p>
+          <h2 className="result-score-big">
+            {submitResult?.correctCount}/{submitResult?.totalQuestions}
+          </h2>
+          <p className="result-subtitle">
+            Düşünme süresi: {formatTimer(totalThinkMs)} · Sıralama: #
+            {submitResult?.rank}
+          </p>
 
           <div className="stats-grid">
             <div className="stat-card">
               <span className="stat-label">Doğru</span>
-              <span className="stat-value correct-val">{submitResult?.correctCount}</span>
+              <span className="stat-value correct-val">
+                {submitResult?.correctCount}
+              </span>
             </div>
             <div className="stat-card">
               <span className="stat-label">Yanlış</span>
-              <span className="stat-value wrong-val">{(submitResult?.totalQuestions || 0) - (submitResult?.correctCount || 0)}</span>
+              <span className="stat-value wrong-val">
+                {(submitResult?.totalQuestions || 0) -
+                  (submitResult?.correctCount || 0)}
+              </span>
             </div>
             <div className="stat-card">
-              <span className="stat-label">Süre</span>
-              <span className="stat-value">{formatTimer(elapsedMs)}</span>
+              <span className="stat-label">Düşünme Süresi</span>
+              <span className="stat-value">{formatTimer(totalThinkMs)}</span>
             </div>
             <div className="stat-card">
               <span className="stat-label">Puan</span>
-              <span className="stat-value score-val">{submitResult?.score}</span>
+              <span className="stat-value score-val">
+                {submitResult?.score}
+              </span>
             </div>
           </div>
 
           <div className="mini-leaderboard">
             <div className="leaderboard-row highlight">
-              <span className={`leaderboard-rank ${submitResult?.rank === 1 ? 'rank-1' : ''}`}>#{submitResult?.rank}</span>
+              <span
+                className={`leaderboard-rank ${submitResult?.rank === 1 ? "rank-1" : ""}`}
+              >
+                #{submitResult?.rank}
+              </span>
               <span className="leaderboard-name">{username}</span>
               <span className="leaderboard-score">{submitResult?.score}</span>
             </div>
           </div>
-          
+
           <a href="/leaderboard" className="btn-primary">
             Sıralamayı Gör
           </a>
+          <button
+            className="btn-secondary"
+            onClick={() => window.location.reload()}
+            style={{ marginTop: "0.5rem" }}
+          >
+            Tekrar Oyna
+          </button>
+
+          {/* Sosyal linkler */}
+          <div className="result-social">
+            <p className="result-social-text">
+              🏆 Kazananlar Instagram hikayemizde paylaşılacak!
+            </p>
+            <div className="result-social-links">
+              <a
+                href="https://www.instagram.com/hsdkarabuk/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="social-link instagram"
+              >
+                📸 @hsdkarabuk
+              </a>
+              <a
+                href="https://chat.whatsapp.com/D37UjhZBCkK0DNFy699WED"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="social-link whatsapp"
+              >
+                💬 Gruba Katıl
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
-  const currentMeme = memes[currentIndex];
-  const isLastQuestion = currentIndex + 1 === memes.length;
-  
+  // Active game (question / answered / video)
   const videoId = getVideoId(currentMeme?.youtubeUrl || "");
-  const imageUrl = videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : "";
+  const thumbnailUrl = videoId
+    ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+    : "";
+
+  const timerPaused = phase !== "question";
 
   return (
     <div id="game-layout">
       {/* Arka plan müziği */}
       <audio ref={audioRef} src="https://upload.wikimedia.org/wikipedia/commons/3/34/Suspense.ogg" loop />
       <audio ref={correctAudioRef} src="https://upload.wikimedia.org/wikipedia/commons/e/e5/Magical_sound_effect.ogg" />
-      
       {/* Üst Bar */}
       <div id="game-header-top">
-        <div id="timer-display" className={!isTimerRunning && phase === 'video' ? 'paused' : ''}>
-          ⏱ {formatTimer(elapsedMs)}
+        <div id="timer-display" className={timerPaused ? "paused" : ""}>
+          ⏱ {formatTimer(displayMs)}
         </div>
         <div className="game-actions">
           <button className="action-icon-btn" onClick={toggleMute}>
             {isMuted ? "🔇" : "🔊"}
           </button>
-          <button className="action-pill-btn">🔀 50:50 (2)</button>
-          <button className="action-pill-btn">👁 Göster (1)</button>
-          <button className="action-pill-btn user-hash-btn">👤 {username}</button>
+          <button className="action-pill-btn user-hash-btn">
+            👤 {username}
+          </button>
         </div>
       </div>
 
       <div className="game-progress-row">
-        <span id="question-counter">Soru {currentIndex + 1} / {memes.length}</span>
+        <span id="question-counter">
+          Soru {currentIndex + 1} / {memes.length}
+        </span>
         <span className="progress-percent">
-          <span className="klasik-badge">Klasik</span>
-          5%
+          {Math.round(((currentIndex + 1) / memes.length) * 100)}%
         </span>
       </div>
       <div className="progress-bar-container">
-        <div className="progress-bar-fill" style={{ width: `${((currentIndex + 1) / memes.length) * 100}%` }}></div>
+        <div
+          className="progress-bar-fill"
+          style={{
+            width: `${((currentIndex + (phase === "question" ? 0 : 1)) / memes.length) * 100}%`,
+          }}
+        />
       </div>
 
       <div className="game-card">
         <div className="media-container">
-          {phase === "question" ? (
-            imageUrl && <img id="meme-image" src={imageUrl} alt="Meme" />
+          {phase === "question" || phase === "answered" ? (
+            thumbnailUrl && (
+              <img id="meme-image" src={thumbnailUrl} alt="Meme" />
+            )
           ) : (
-            <div id="yt-player"></div>
+            <div id="yt-player" />
           )}
         </div>
 
         <div className="game-card-body">
-          <h2 className="question-title">Bu meme&apos;i biliyor musun?</h2>
+          {phase === "question" && (
+            <h2 className="question-title">Bu meme&apos;i biliyor musun?</h2>
+          )}
+
+          {phase === "answered" && (
+            <div className="feedback-alert">
+              ✅ Cevabın kaydedildi! Meme videosu geliyor...
+            </div>
+          )}
 
           {phase === "video" && (
-            <div className="feedback-alert">
-              Harika! Bilgi akıyor!
+            <div className="feedback-alert video-playing">
+              🎬 Meme&apos;i tanı — sonra devam et!
             </div>
           )}
 
           <div id="options-container">
             {currentMeme?.options.map((option) => {
               const isSelected = selectedOptionId === option.id;
-              const isVideoPhase = phase === "video";
+              const isLocked = phase === "answered" || phase === "video";
               let btnClass = "option-btn";
               if (isSelected) btnClass += " selected";
-              if (isVideoPhase && isSelected) btnClass += " correct";
-              
+              if (isLocked && isSelected) btnClass += " locked";
+
               return (
                 <button
                   key={option.id}
                   className={btnClass}
                   data-option-id={option.id}
                   onClick={() => handleSelectOption(option.id)}
-                  disabled={isVideoPhase || (selectedOptionId !== null && selectedOptionId !== option.id)}
+                  disabled={phase !== "question"}
                 >
-                  {isVideoPhase && isSelected && <span className="check-icon">✓</span>}
+                  {isLocked && isSelected && (
+                    <span className="check-icon">✓</span>
+                  )}
                   {option.text}
                 </button>
               );
@@ -408,26 +555,23 @@ export default function PlayPage() {
           </div>
 
           <div className="card-footer">
-            {phase === "question" ? (
-              <button 
-                id="submit-answer-btn" 
+            {phase === "question" && (
+              <button
+                id="submit-answer-btn"
                 onClick={handleSubmitAnswer}
                 disabled={!selectedOptionId}
               >
                 Cevapla
               </button>
-            ) : (
-              <button 
-                id="next-btn" 
-                onClick={handleNext}
-              >
-                {isLastQuestion ? "Sonuçları Gör" : "Sonraki →"}
+            )}
+            {(phase === "answered" || phase === "video") && (
+              <button id="next-btn" onClick={handleNext}>
+                {isLastQuestion ? "Sonuçları Gör" : "Devam Et →"}
               </button>
             )}
           </div>
         </div>
       </div>
-
     </div>
   );
 }

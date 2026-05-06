@@ -3,11 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Leaderboard from "@/app/components/leaderboard";
-
-// ============================================
-// Arşivdeki popüler Türk meme YouTube videoları
-// Arka plan dekor ve sağ taraftaki floating kartlar için kullanılıyor.
-// ============================================
+import { validateUsername } from "@/app/lib/profanity";
 const SHOWCASE_MEMES = [
   { id: "j0gRQNEJGmk", title: "Kaplumbağa Ninen" },
   { id: "AYLnGsWj7us", title: "Ben İmamım Gülmem" },
@@ -32,19 +28,6 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
-
-  const bannedWords = ["admin", "fuck", "shit", "sikti", "amk", "orospu", "piç"];
-
-  const validateUsername = (name: string) => {
-    const regex = /^[a-zA-Z0-9çğıöşüÇĞİÖŞÜ\s_-]+$/;
-    if (!name) return "Kullanıcı adı boş bırakılamaz.";
-    if (name.length < 2) return "İsim en az 2 karakter olmalı.";
-    if (name.length > 20) return "İsim en fazla 20 karakter olmalı.";
-    if (!regex.test(name)) return "Geçersiz karakterler.";
-    if (bannedWords.some((w) => name.toLowerCase().includes(w)))
-      return "Bu ismi kullanamazsın!";
-    return "";
-  };
 
   const handleStart = (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,16 +170,33 @@ export default function LoginPage() {
 
       {/* --- Footer --- */}
       <footer className="page-footer">
-        <p>
-          Meme Guesser — HSD Karabük &nbsp;·&nbsp;{" "}
+        <div className="social-links">
+          <a
+            href="https://www.instagram.com/hsdkarabuk/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="social-link instagram"
+          >
+            📸 Instagram
+          </a>
+          <a
+            href="https://chat.whatsapp.com/D37UjhZBCkK0DNFy699WED"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="social-link whatsapp"
+          >
+            💬 WhatsApp
+          </a>
           <a
             href="https://github.com/mlhgks0868/HSDKarabuk_Meme"
             target="_blank"
             rel="noopener noreferrer"
+            className="social-link github"
           >
-            GitHub
+            🔗 GitHub
           </a>
-        </p>
+        </div>
+        <p>Meme Guesser — HSD Karabük</p>
       </footer>
     </main>
   );

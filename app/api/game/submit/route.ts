@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { validateSession, calculateScore } from "@/app/lib/anti-cheat";
 import { checkRateLimit, RATE_LIMITS } from "@/app/lib/rate-limit";
+import { validateUsername as validateProfanity } from "@/app/lib/profanity";
 import type { GameSubmitRequest, GameSubmitResponse, ApiError } from "@/app/lib/types";
 import { GAME_CONFIG } from "@/app/lib/types";
 
@@ -11,18 +12,10 @@ import { GAME_CONFIG } from "@/app/lib/types";
 // Client sadece cevaplarını ve süresini gönderir.
 // ============================================
 
-// Basit küfür/yasaklı kelime filtresi
-const BANNED_WORDS = ["admin", "fuck", "shit", "sikti", "amk", "orospu", "piç"];
-
 function validateUsername(username: string): string | null {
   if (!username || typeof username !== "string") return "Kullanıcı adı zorunludur.";
-  const trimmed = username.trim();
-  if (trimmed.length < GAME_CONFIG.MIN_USERNAME_LENGTH) return `Kullanıcı adı en az ${GAME_CONFIG.MIN_USERNAME_LENGTH} karakter olmalı.`;
-  if (trimmed.length > GAME_CONFIG.MAX_USERNAME_LENGTH) return `Kullanıcı adı en fazla ${GAME_CONFIG.MAX_USERNAME_LENGTH} karakter olabilir.`;
-  if (!/^[a-zA-Z0-9çğıöşüÇĞİÖŞÜ\s_-]+$/.test(trimmed)) return "Kullanıcı adı sadece harf, rakam, boşluk, _ ve - içerebilir.";
-  const lower = trimmed.toLowerCase();
-  if (BANNED_WORDS.some((w) => lower.includes(w))) return "Kullanıcı adı uygunsuz kelime içeriyor.";
-  return null;
+  const result = validateProfanity(username);
+  return result || null; // boş string = geçerli → null döner
 }
 
 export async function POST(request: NextRequest) {
@@ -57,10 +50,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Süre mantık kontrolü (negatif veya aşırı uzun süre engelle)
+    // Süre mantık kontrolü
     if (timeTakenMs < 0 || timeTakenMs > GAME_CONFIG.SESSION_TTL_MS) {
       return NextResponse.json(
         { error: "Geçersiz süre değeri.", code: "VALIDATION_ERROR" } satisfies ApiError,
+        { status: 400 }
+      );
+    }
+
+    // ★ ANTİ-CHEAT: Minimum süre kontrolü
+    // 10 soru için en az 500ms/soru = 5000ms gerekli
+    const MIN_TIME_PER_QUESTION_MS = 500;
+    const minRequiredMs = answers.length * MIN_TIME_PER_QUESTION_MS;
+    if (timeTakenMs < minRequiredMs) {
+      return NextResponse.json(
+        { error: "Süre doğrulaması başarısız — çok hızlı.", code: "VALIDATION_ERROR" } satisfies ApiError,
         { status: 400 }
       );
     }
@@ -103,14 +107,40 @@ export async function POST(request: NextRequest) {
     const correctMap = new Map(memes.map((m) => [m.id, m.correctOptionId]));
 
     let correctCount = 0;
+    const correctMemeIds: string[] = [];
     for (const answer of answers) {
       if (correctMap.get(answer.memeId) === answer.selectedOptionId) {
         correctCount++;
+        correctMemeIds.push(answer.memeId);
       }
     }
 
+    // ★ Doğru bilinen memelerin timesCorrect sayacını artır
+    if (correctMemeIds.length > 0) {
+      await prisma.meme.updateMany({
+        where: { id: { in: correctMemeIds } },
+        data: { timesCorrect: { increment: 1 } },
+      });
+    }
+
     // SERVER-SIDE SKOR HESAPLAMA
-    const score = calculateScore(correctCount, timeTakenMs);
+    // ★ ANTİ-CHEAT: Server zamanı ile cross-check
+    // Client'ın bildirdiği süre, server'ın bildiği gerçek geçen süreden
+    // fazla olamaz (ama video izleme süresi çıkarıldığı için az olabilir)
+    const serverElapsedMs = Date.now() - session.startedAt.getTime();
+    // Client süresi sunucu süresinden büyükse → manipülasyon
+    if (timeTakenMs > serverElapsedMs + 2000) { // 2sn tolerans (network lag)
+      return NextResponse.json(
+        { error: "Süre doğrulaması başarısız.", code: "VALIDATION_ERROR" } satisfies ApiError,
+        { status: 400 }
+      );
+    }
+    // Skor hesaplamasında sunucu süresini de dikkate al:
+    // Client bildirdiği süreyi kullan ama serverElapsedMs'nin %20'sinden az olamaz
+    // (video izleme süresi çıkarıldığında bile minimum bir oran beklenir)
+    const minAcceptableMs = Math.floor(serverElapsedMs * 0.05); // en az %5'i düşünme olmalı
+    const effectiveTimeMs = Math.max(timeTakenMs, minAcceptableMs);
+    const score = calculateScore(correctCount, effectiveTimeMs);
 
     // Session'ı tamamlandı olarak işaretle (tekrar kullanım engeli)
     await prisma.gameSession.update({
