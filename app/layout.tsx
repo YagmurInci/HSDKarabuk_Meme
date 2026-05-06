@@ -5,6 +5,12 @@ export const metadata: Metadata = {
   title: "Meme Guesser — YouTube Meme Tahmin Oyunu",
   description: "YouTube meme kliplerini izle, hangi meme olduğunu tahmin et ve liderlik tablosunda yerini al!",
   keywords: ["meme", "quiz", "oyun", "youtube", "tahmin"],
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
 };
 
 export default function RootLayout({
@@ -19,7 +25,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap"
+          href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap"
           rel="stylesheet"
         />
       </head>

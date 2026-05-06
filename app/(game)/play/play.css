@@ -25,6 +25,10 @@ body {
   padding: 0;
   font-family: 'Syne', sans-serif;
   min-height: 100vh;
+  /* Mobil scroll & touch */
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
 }
 
 /* GENEL KURALLAR */
@@ -160,6 +164,20 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+/* Dikey videolar (YouTube Shorts, 9:16) */
+.media-container.vertical {
+  aspect-ratio: 9 / 16;
+  max-width: 220px;
+  max-height: 390px;
+}
+
+@media (max-width: 480px) {
+  .media-container.vertical {
+    max-width: 200px;
+    max-height: 355px;
+  }
 }
 
 #meme-image {
@@ -517,4 +535,271 @@ body {
   border-color: var(--accent-purple);
   color: #fff;
 }
+
+/* ================================================
+   MOBİL OPTİMİZASYON — Stand etkinliği (99% mobil)
+   ================================================ */
+
+/* Küçük telefonlar (iPhone SE, Galaxy S8 vb.) */
+@media (max-width: 380px) {
+  #game-layout {
+    padding-bottom: 1rem;
+  }
+
+  #game-header-top {
+    padding: 10px 12px 0;
+  }
+
+  #timer-display {
+    font-size: 14px;
+    padding: 3px 10px;
+  }
+
+  .action-icon-btn, .action-pill-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .game-progress-row {
+    padding: 10px 12px 4px;
+  }
+
+  .progress-bar-container {
+    margin: 0 12px;
+  }
+
+  .media-container {
+    margin: 12px auto 0;
+    max-width: 100%;
+    width: calc(100% - 24px);
+    border-radius: 10px;
+  }
+
+  .game-card-body {
+    padding: 16px 12px;
+  }
+
+  .question-title {
+    font-size: 16px;
+    margin-bottom: 16px;
+  }
+
+  .option-btn {
+    padding: 12px 12px;
+    font-size: 14px;
+    gap: 8px;
+    /* Minimum touch target */
+    min-height: 48px;
+  }
+
+  .option-btn::before {
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+  }
+
+  .feedback-alert {
+    padding: 8px;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+
+  #submit-answer-btn, #next-btn, .btn-primary, .btn-secondary {
+    padding: 12px;
+    font-size: 14px;
+    min-height: 48px;
+  }
+
+  .result-score-big {
+    font-size: 40px;
+  }
+
+  .result-subtitle {
+    font-size: 12px;
+    margin-bottom: 24px;
+  }
+
+  .stats-grid {
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    padding: 12px;
+  }
+
+  .stat-value {
+    font-size: 18px;
+  }
+}
+
+/* Normal telefonlar (iPhone 12/13/14, Galaxy S21 vb.) */
+@media (max-width: 480px) {
+  #game-layout {
+    max-width: 100%;
+    box-shadow: none;
+    padding-bottom: 1.5rem;
+    /* iOS safe area */
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  #game-header-top {
+    padding: 12px 16px 0;
+    /* iOS notch */
+    padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  }
+
+  #timer-display {
+    font-size: 15px;
+    padding: 4px 12px;
+  }
+
+  .game-progress-row {
+    padding: 12px 16px 6px;
+  }
+
+  #question-counter {
+    font-size: 12px;
+  }
+
+  .progress-bar-container {
+    margin: 0 16px;
+  }
+
+  .media-container {
+    margin: 14px auto 0;
+    max-width: 100%;
+    width: calc(100% - 32px);
+    border-radius: 12px;
+  }
+
+  .game-card-body {
+    padding: 18px 16px;
+  }
+
+  .question-title {
+    font-size: 18px;
+    margin-bottom: 18px;
+  }
+
+  .option-btn {
+    padding: 14px 14px;
+    font-size: 15px;
+    border-radius: 10px;
+    /* 48px minimum touch target */
+    min-height: 48px;
+  }
+
+  #options-container {
+    gap: 10px;
+  }
+
+  .card-footer {
+    margin-top: 16px;
+  }
+
+  #submit-answer-btn, #next-btn, .btn-primary, .btn-secondary {
+    padding: 14px;
+    font-size: 15px;
+    min-height: 48px;
+  }
+
+  /* Result page */
+  #game-result {
+    padding: 40px 16px 24px;
+  }
+
+  .result-score-big {
+    font-size: 48px;
+  }
+
+  .result-subtitle {
+    font-size: 13px;
+    margin-bottom: 28px;
+  }
+
+  .stats-grid {
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    padding: 14px;
+  }
+
+  .mini-leaderboard {
+    margin-bottom: 20px;
+  }
+
+  .leaderboard-row {
+    padding: 12px 14px;
+  }
+
+  .result-social {
+    margin-top: 1rem;
+    padding-top: 1rem;
+  }
+
+  .result-social-links {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+
+/* Touch-friendly: hover etkileri mobilde devre dışı */
+@media (hover: none) and (pointer: coarse) {
+  .option-btn:hover:not(:disabled) {
+    border-color: var(--border-dark);
+    background-color: var(--bg-dark);
+  }
+
+  #submit-answer-btn:not(:disabled):hover,
+  #next-btn:hover,
+  .btn-primary:hover,
+  .btn-secondary:hover {
+    transform: none;
+    filter: none;
+  }
+
+  /* Tap visual feedback (active state) */
+  .option-btn:active:not(:disabled) {
+    border-color: var(--accent-purple);
+    background-color: var(--accent-purple-selected);
+    transform: scale(0.98);
+  }
+
+  #submit-answer-btn:active:not(:disabled),
+  #next-btn:active,
+  .btn-primary:active,
+  .btn-secondary:active {
+    transform: scale(0.98);
+    filter: brightness(0.95);
+  }
+}
+
+/* Landscape modda video boyutunu küçült */
+@media (max-height: 500px) and (orientation: landscape) {
+  .media-container {
+    max-width: 260px;
+    margin-top: 8px;
+  }
+
+  .game-card-body {
+    padding: 10px 16px;
+  }
+
+  .question-title {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+
+  #game-result {
+    padding: 20px 16px;
+  }
+
+  .result-score-big {
+    font-size: 36px;
+  }
+}
+
 
