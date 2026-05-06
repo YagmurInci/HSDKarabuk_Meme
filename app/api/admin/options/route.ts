@@ -8,9 +8,10 @@ import type { ApiError } from "@/app/lib/types";
 // Admin şifresi ile korunur
 // ============================================
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 function checkAdminAuth(request: NextRequest): boolean {
+  if (!ADMIN_PASSWORD) return false; // ENV yoksa hiçbir erişime izin verme
   const authHeader = request.headers.get("x-admin-password");
   return authHeader === ADMIN_PASSWORD;
 }
