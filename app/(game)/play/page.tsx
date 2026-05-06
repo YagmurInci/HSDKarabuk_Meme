@@ -1,10 +1,10 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState, useEffect, useRef } from "react";
 import type { 
   GameStartResponse, 
   MemeForClient, 
-  GameSubmitRequest, 
   GameSubmitResponse,
   PlayerAnswer
 } from "@/app/lib/types";
@@ -12,8 +12,10 @@ import "./play.css";
 
 type GamePhase = "loading" | "question" | "video" | "result" | "error";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare global {
   interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     YT: any;
     onYouTubeIframeAPIReady: () => void;
   }
@@ -33,6 +35,7 @@ export default function PlayPage() {
   const [isMuted, setIsMuted] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
   
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const playerRef = useRef<any>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -138,7 +141,7 @@ export default function PlayPage() {
           rel: 0
         },
         events: { 
-          onReady: (e: any) => {
+          onReady: (e: { target: { mute: () => void; playVideo: () => void } }) => {
             if (isMuted) e.target.mute();
             e.target.playVideo();
           }
@@ -346,7 +349,7 @@ export default function PlayPage() {
         </div>
 
         <div className="game-card-body">
-          <h2 className="question-title">Bu meme'i biliyor musun?</h2>
+          <h2 className="question-title">Bu meme&apos;i biliyor musun?</h2>
 
           {phase === "video" && (
             <div className="feedback-alert">

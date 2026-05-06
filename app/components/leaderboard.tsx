@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { LeaderboardItem } from "@/app/lib/types";
 
 // ============================================
@@ -20,7 +20,7 @@ export default function Leaderboard({ compact = false }: LeaderboardProps) {
   const [error, setError] = useState(false);
 
   // --- NESLİHAN: Veri Çekme (Fetch) Fonksiyonu ---
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = useCallback(async () => {
     try {
       setLoading(true);
       setError(false);
@@ -39,7 +39,7 @@ export default function Leaderboard({ compact = false }: LeaderboardProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [compact]);
 
   // --- NESLİHAN: Auto-Refresh ve İlk Yükleme ---
   useEffect(() => {
@@ -51,7 +51,7 @@ export default function Leaderboard({ compact = false }: LeaderboardProps) {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [compact]);
+  }, [fetchLeaderboard]);
 
   return (
     <div id="leaderboard-component" className={`leaderboard-component ${compact ? "leaderboard-compact" : "leaderboard-full"}`}>
