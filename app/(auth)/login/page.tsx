@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Leaderboard from "@/app/components/leaderboard";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -40,7 +41,7 @@ export default function LoginPage() {
   return (
     <main id="login-page" className="login-container">
       <div id="login-header" className="login-header">
-        <h1 className="login-title">Meme Guesser</h1>
+        <h1 className="login-title">🎮 Meme Guesser</h1>
         <p className="login-subtitle">YouTube meme tahmin oyunu</p>
       </div>
 
@@ -51,7 +52,7 @@ export default function LoginPage() {
           </label>
           <input
             id="username-input"
-            className="username-input text-black p-2 rounded border"
+            className="username-input"
             type="text"
             placeholder="Adını gir..."
             value={username}
@@ -60,11 +61,12 @@ export default function LoginPage() {
               setError(""); // Yazmaya başlayınca hatayı temizle
             }}
             autoComplete="off"
+            maxLength={20}
           />
           
-          {/* ✅ Hata mesajı artık burada görünecek */}
+          {/* Hata mesajı */}
           {error && (
-            <span id="username-error" className="input-error" style={{ color: "red", display: "block", marginTop: "5px" }}>
+            <span id="username-error" className="input-error">
               {error}
             </span>
           )}
@@ -74,25 +76,15 @@ export default function LoginPage() {
           id="start-game-btn"
           className="start-game-btn"
           type="submit"
-          disabled={username.length < 2} // ✅ Validasyon kuralı
-          style={{ 
-            marginTop: "10px",
-            padding: "10px",
-            backgroundColor: username.length < 2 ? "#ccc" : "#0070f3",
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-            cursor: username.length < 2 ? "not-allowed" : "pointer"
-          }}
+          disabled={username.length < 2}
         >
-          Oyuna Başla
+          🚀 Oyuna Başla
         </button>
       </form>
 
       <div id="leaderboard-wrapper" className="leaderboard-wrapper">
-        {/* TODO: [NESLİHAN] Leaderboard component buraya yerleştirilecek */}
-        <p style={{ opacity: 0.5, marginTop: "20px" }}>Liderlik Tablosu Bekleniyor...</p>
+        <Leaderboard compact={true} />
       </div>
     </main>
   );
-} 
+}
