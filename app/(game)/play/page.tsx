@@ -354,6 +354,9 @@ export default function PlayPage() {
           <p className="result-subtitle">
             {errorMessage || "Bir hata oluştu."}
           </p>
+          <p style={{ fontSize: "0.75rem", color: "var(--text-dim)", marginTop: "0.5rem" }}>
+            Cevap: {answersRef.current.length}/{memes.length} · Süre: {formatTimer(totalThinkMs)}
+          </p>
           <button className="btn-primary" onClick={() => window.location.reload()}>
             Tekrar Dene
           </button>

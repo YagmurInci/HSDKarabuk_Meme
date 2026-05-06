@@ -565,10 +565,23 @@ body {
   font-weight: 700;
 }
 
+.leaderboard-details {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 .leaderboard-correct {
   font-size: 0.75rem;
+  color: var(--correct-green, #22c55e);
+  flex-shrink: 0;
+}
+
+.leaderboard-time {
+  font-size: 0.75rem;
   color: var(--text-dim);
-  margin-left: 0.5rem;
   flex-shrink: 0;
 }
 
