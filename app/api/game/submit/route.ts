@@ -107,10 +107,20 @@ export async function POST(request: NextRequest) {
     const correctMap = new Map(memes.map((m) => [m.id, m.correctOptionId]));
 
     let correctCount = 0;
+    const correctMemeIds: string[] = [];
     for (const answer of answers) {
       if (correctMap.get(answer.memeId) === answer.selectedOptionId) {
         correctCount++;
+        correctMemeIds.push(answer.memeId);
       }
+    }
+
+    // ★ Doğru bilinen memelerin timesCorrect sayacını artır
+    if (correctMemeIds.length > 0) {
+      await prisma.meme.updateMany({
+        where: { id: { in: correctMemeIds } },
+        data: { timesCorrect: { increment: 1 } },
+      });
     }
 
     // SERVER-SIDE SKOR HESAPLAMA

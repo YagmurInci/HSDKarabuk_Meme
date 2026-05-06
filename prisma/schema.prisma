@@ -19,6 +19,8 @@ model Meme {
   startTime       Int      @default(0)  /// Videonun başlangıç saniyesi
   endTime         Int      @default(60) /// Videonun bitiş saniyesi
   correctOptionId String   /// Doğru cevabın Option ID'si
+  timesShown      Int      @default(0)  /// Kaç kez gösterildi (weighted selection)
+  timesCorrect    Int      @default(0)  /// Kaç kez doğru bilinmesi (zorluk takibi)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
