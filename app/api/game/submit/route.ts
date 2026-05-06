@@ -50,10 +50,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Süre mantık kontrolü (negatif veya aşırı uzun süre engelle)
+    // Süre mantık kontrolü
     if (timeTakenMs < 0 || timeTakenMs > GAME_CONFIG.SESSION_TTL_MS) {
       return NextResponse.json(
         { error: "Geçersiz süre değeri.", code: "VALIDATION_ERROR" } satisfies ApiError,
+        { status: 400 }
+      );
+    }
+
+    // ★ ANTİ-CHEAT: Minimum süre kontrolü
+    // 10 soru için en az 500ms/soru = 5000ms gerekli
+    const MIN_TIME_PER_QUESTION_MS = 500;
+    const minRequiredMs = answers.length * MIN_TIME_PER_QUESTION_MS;
+    if (timeTakenMs < minRequiredMs) {
+      return NextResponse.json(
+        { error: "Süre doğrulaması başarısız — çok hızlı.", code: "VALIDATION_ERROR" } satisfies ApiError,
         { status: 400 }
       );
     }
@@ -103,7 +114,23 @@ export async function POST(request: NextRequest) {
     }
 
     // SERVER-SIDE SKOR HESAPLAMA
-    const score = calculateScore(correctCount, timeTakenMs);
+    // ★ ANTİ-CHEAT: Server zamanı ile cross-check
+    // Client'ın bildirdiği süre, server'ın bildiği gerçek geçen süreden
+    // fazla olamaz (ama video izleme süresi çıkarıldığı için az olabilir)
+    const serverElapsedMs = Date.now() - session.startedAt.getTime();
+    // Client süresi sunucu süresinden büyükse → manipülasyon
+    if (timeTakenMs > serverElapsedMs + 2000) { // 2sn tolerans (network lag)
+      return NextResponse.json(
+        { error: "Süre doğrulaması başarısız.", code: "VALIDATION_ERROR" } satisfies ApiError,
+        { status: 400 }
+      );
+    }
+    // Skor hesaplamasında sunucu süresini de dikkate al:
+    // Client bildirdiği süreyi kullan ama serverElapsedMs'nin %20'sinden az olamaz
+    // (video izleme süresi çıkarıldığında bile minimum bir oran beklenir)
+    const minAcceptableMs = Math.floor(serverElapsedMs * 0.05); // en az %5'i düşünme olmalı
+    const effectiveTimeMs = Math.max(timeTakenMs, minAcceptableMs);
+    const score = calculateScore(correctCount, effectiveTimeMs);
 
     // Session'ı tamamlandı olarak işaretle (tekrar kullanım engeli)
     await prisma.gameSession.update({
