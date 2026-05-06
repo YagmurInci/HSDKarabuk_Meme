@@ -9,12 +9,13 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "#0f172a",
-        surface: "#1e293b",
-        primary: "#8b5cf6",
+        background: "#0a0a12",
+        surface: "#16162a",
+        elevated: "#1e1e36",
+        primary: "#a855f7",
         primaryHover: "#7c3aed",
-        accent: "#0ea5e9",
-        textMain: "#f8fafc",
+        accent: "#22d3ee",
+        textMain: "#f1f5f9",
         textMuted: "#94a3b8",
         success: "#22c55e",
         error: "#ef4444",
@@ -32,11 +33,11 @@ const config: Config = {
           '50%': { transform: 'translateY(-5px)' },
         },
         flashGreen: {
-          '0%, 100%': { backgroundColor: 'var(--surface)', borderColor: 'transparent' },
+          '0%, 100%': { backgroundColor: 'var(--bg-elevated)', borderColor: 'transparent' },
           '50%': { backgroundColor: 'rgba(34, 197, 94, 0.2)', borderColor: 'var(--success)' },
         },
         flashRed: {
-          '0%, 100%': { backgroundColor: 'var(--surface)', borderColor: 'transparent' },
+          '0%, 100%': { backgroundColor: 'var(--bg-elevated)', borderColor: 'transparent' },
           '50%': { backgroundColor: 'rgba(239, 68, 68, 0.2)', borderColor: 'var(--error)' },
         },
         slideUp: {
@@ -44,8 +45,8 @@ const config: Config = {
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
         pulseGlow: {
-          '0%, 100%': { boxShadow: '0 0 10px var(--primary)' },
-          '50%': { boxShadow: '0 0 25px var(--primary)' },
+          '0%, 100%': { boxShadow: '0 0 10px var(--purple-core)' },
+          '50%': { boxShadow: '0 0 25px var(--purple-core)' },
         }
       }
     },
