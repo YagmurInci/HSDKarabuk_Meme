@@ -391,6 +391,31 @@ export default function PlayPage() {
           >
             Tekrar Oyna
           </button>
+
+          {/* Sosyal linkler */}
+          <div className="result-social">
+            <p className="result-social-text">
+              🏆 Kazananlar Instagram hikayemizde paylaşılacak!
+            </p>
+            <div className="result-social-links">
+              <a
+                href="https://www.instagram.com/hsdkarabuk/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="social-link instagram"
+              >
+                📸 @hsdkarabuk
+              </a>
+              <a
+                href="https://chat.whatsapp.com/D37UjhZBCkK0DNFy699WED"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="social-link whatsapp"
+              >
+                💬 Gruba Katıl
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     );

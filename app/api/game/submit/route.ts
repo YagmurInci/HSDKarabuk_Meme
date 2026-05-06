@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { validateSession, calculateScore } from "@/app/lib/anti-cheat";
 import { checkRateLimit, RATE_LIMITS } from "@/app/lib/rate-limit";
+import { validateUsername as validateProfanity } from "@/app/lib/profanity";
 import type { GameSubmitRequest, GameSubmitResponse, ApiError } from "@/app/lib/types";
 import { GAME_CONFIG } from "@/app/lib/types";
 
@@ -11,18 +12,10 @@ import { GAME_CONFIG } from "@/app/lib/types";
 // Client sadece cevaplarını ve süresini gönderir.
 // ============================================
 
-// Basit küfür/yasaklı kelime filtresi
-const BANNED_WORDS = ["admin", "fuck", "shit", "sikti", "amk", "orospu", "piç"];
-
 function validateUsername(username: string): string | null {
   if (!username || typeof username !== "string") return "Kullanıcı adı zorunludur.";
-  const trimmed = username.trim();
-  if (trimmed.length < GAME_CONFIG.MIN_USERNAME_LENGTH) return `Kullanıcı adı en az ${GAME_CONFIG.MIN_USERNAME_LENGTH} karakter olmalı.`;
-  if (trimmed.length > GAME_CONFIG.MAX_USERNAME_LENGTH) return `Kullanıcı adı en fazla ${GAME_CONFIG.MAX_USERNAME_LENGTH} karakter olabilir.`;
-  if (!/^[a-zA-Z0-9çğıöşüÇĞİÖŞÜ\s_-]+$/.test(trimmed)) return "Kullanıcı adı sadece harf, rakam, boşluk, _ ve - içerebilir.";
-  const lower = trimmed.toLowerCase();
-  if (BANNED_WORDS.some((w) => lower.includes(w))) return "Kullanıcı adı uygunsuz kelime içeriyor.";
-  return null;
+  const result = validateProfanity(username);
+  return result || null; // boş string = geçerli → null döner
 }
 
 export async function POST(request: NextRequest) {
