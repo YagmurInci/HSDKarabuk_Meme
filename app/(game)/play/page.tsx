@@ -205,6 +205,10 @@ export default function PlayPage() {
     setSelectedOptionId(optionId);
   };
 
+  // ★ answersRef — React state async olduğu için ref ile anlık takip
+  const answersRef = useRef(answers);
+  answersRef.current = answers;
+
   // Cevapla butonu
   const handleSubmitAnswer = () => {
     if (!selectedOptionId || !currentMeme) return;
@@ -213,10 +217,12 @@ export default function PlayPage() {
     stopQuestionTimer();
 
     // Cevabı kaydet
-    setAnswers((prev) => [
-      ...prev,
-      { memeId: currentMeme.id, selectedOptionId },
-    ]);
+    const newAnswer = { memeId: currentMeme.id, selectedOptionId };
+    setAnswers((prev) => {
+      const updated = [...prev, newAnswer];
+      answersRef.current = updated; // ★ Ref'i de güncelle
+      return updated;
+    });
 
     // "answered" fazına geç — feedback göster
     setPhase("answered");
@@ -269,6 +275,9 @@ export default function PlayPage() {
       const playerName =
         localStorage.getItem("meme_guesser_username") || "Oyuncu";
 
+      // ★ answersRef kullan — state async olduğu için stale olabilir
+      const finalAnswers = answersRef.current;
+
       try {
         const response = await fetch("/api/game/submit", {
           method: "POST",
@@ -276,7 +285,7 @@ export default function PlayPage() {
           body: JSON.stringify({
             sessionToken,
             username: playerName,
-            answers,
+            answers: finalAnswers,
             timeTakenMs: Math.round(totalThinkMs),
           }),
         });
