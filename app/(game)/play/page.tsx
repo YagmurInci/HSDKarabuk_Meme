@@ -233,13 +233,28 @@ export default function PlayPage() {
     }, 1500);
   };
 
-  // Devam Et / Sonraki
-  const handleNext = async () => {
-    // YouTube player temizle
+  // ★ Player'ı güvenli şekilde durdur ve yok et
+  const stopAndDestroyPlayer = () => {
     if (playerRef.current) {
-      playerRef.current.destroy();
+      try {
+        // Önce durdur (arka planda çalmaya devam etmesin)
+        if (typeof playerRef.current.stopVideo === "function") {
+          playerRef.current.stopVideo();
+        }
+        if (typeof playerRef.current.destroy === "function") {
+          playerRef.current.destroy();
+        }
+      } catch {
+        // Player zaten yok edilmiş olabilir
+      }
       playerRef.current = null;
     }
+  };
+
+  // Devam Et / Sonraki
+  const handleNext = async () => {
+    // ★ YouTube player'ı KESİNLİKLE durdur ve yok et
+    stopAndDestroyPlayer();
 
     if (currentIndex + 1 < memes.length) {
       // Sonraki soruya geç
@@ -266,7 +281,10 @@ export default function PlayPage() {
           }),
         });
 
-        if (!response.ok) throw new Error("Failed to submit game");
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || `Sunucu hatası (${response.status})`);
+        }
 
         const result: GameSubmitResponse = await response.json();
         setSubmitResult(result);
