@@ -12,12 +12,13 @@ export interface GameStartResponse {
   memes: MemeForClient[];
 }
 
-/** Client'a gönderilen meme verisi (correctOptionId YOK!) */
+/** Client'a gönderilen meme verisi */
 export interface MemeForClient {
   id: string;
   youtubeUrl: string;
   startTime: number;
   endTime: number;
+  correctOptionId: string; // Doğru/yanlış feedback için (cevap kilitlendikten sonra gösterilir)
   options: OptionForClient[]; // 4 şık (1 doğru, 3 yanlış - karıştırılmış)
 }
 

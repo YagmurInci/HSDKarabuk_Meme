@@ -78,6 +78,10 @@ export default function PlayPage() {
   const currentMeme = memes[currentIndex];
   const isLastQuestion = currentIndex + 1 === memes.length;
 
+  // ★ currentIndex ref — setTimeout closure'larında stale olmaz
+  const currentIndexRef = useRef(currentIndex);
+  currentIndexRef.current = currentIndex;
+
   // Username yükle
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -219,6 +223,13 @@ export default function PlayPage() {
     setSelectedOptionId(optionId);
   };
 
+  // ★ answersRef — React state async olduğu için ref ile anlık takip
+  const answersRef = useRef(answers);
+  answersRef.current = answers;
+
+  // ★ Feedback → video geçişi timeout ref (iptal edilebilir)
+  const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Cevapla butonu
   const handleSubmitAnswer = () => {
     if (!selectedOptionId || !currentMeme) return;
@@ -233,16 +244,27 @@ export default function PlayPage() {
     stopQuestionTimer();
 
     // Cevabı kaydet
-    setAnswers((prev) => [
-      ...prev,
-      { memeId: currentMeme.id, selectedOptionId },
-    ]);
+    const newAnswer = { memeId: currentMeme.id, selectedOptionId };
+    setAnswers((prev) => {
+      const updated = [...prev, newAnswer];
+      answersRef.current = updated; // ★ Ref'i de güncelle
+      return updated;
+    });
 
     // "answered" fazına geç — feedback göster
     setPhase("answered");
 
+    // ★ Önceki timeout varsa temizle
+    if (feedbackTimeoutRef.current) {
+      clearTimeout(feedbackTimeoutRef.current);
+    }
+
     // 1.5 saniye feedback göster, sonra videoya geç
-    setTimeout(() => {
+    // ★ Hangi sorudayız kaydet — timeout geldiğinde hâlâ aynı sorudaysak video başlat
+    const questionIndex = currentIndex;
+    feedbackTimeoutRef.current = setTimeout(() => {
+      // ★ Guard: Kullanıcı "Devam Et"e basmışsa currentIndexRef değişmiş olur
+      if (currentIndexRef.current !== questionIndex) return;
       setPhase("video");
       const videoId = getVideoId(currentMeme.youtubeUrl);
       if (videoId) {
@@ -253,13 +275,32 @@ export default function PlayPage() {
     }, 1500);
   };
 
-  // Devam Et / Sonraki
-  const handleNext = async () => {
-    // YouTube player temizle
+  // ★ Player'ı güvenli şekilde durdur ve yok et
+  const stopAndDestroyPlayer = () => {
     if (playerRef.current) {
-      playerRef.current.destroy();
+      try {
+        if (typeof playerRef.current.stopVideo === "function") {
+          playerRef.current.stopVideo();
+        }
+        if (typeof playerRef.current.destroy === "function") {
+          playerRef.current.destroy();
+        }
+      } catch {
+        // Player zaten yok edilmiş olabilir
+      }
       playerRef.current = null;
     }
+  };
+
+  // Devam Et / Sonraki
+  const handleNext = async () => {
+    // ★ Feedback timeout'u iptal et (video bleed engeli)
+    if (feedbackTimeoutRef.current) {
+      clearTimeout(feedbackTimeoutRef.current);
+      feedbackTimeoutRef.current = null;
+    }
+    // ★ YouTube player'ı KESİNLİKLE durdur ve yok et
+    stopAndDestroyPlayer();
 
     if (currentIndex + 1 < memes.length) {
       // Sonraki soruya geç
@@ -274,6 +315,9 @@ export default function PlayPage() {
       const playerName =
         localStorage.getItem("meme_guesser_username") || "Oyuncu";
 
+      // ★ answersRef kullan — state async olduğu için stale olabilir
+      const finalAnswers = answersRef.current;
+
       try {
         const response = await fetch("/api/game/submit", {
           method: "POST",
@@ -281,12 +325,15 @@ export default function PlayPage() {
           body: JSON.stringify({
             sessionToken,
             username: playerName,
-            answers,
+            answers: finalAnswers,
             timeTakenMs: Math.round(totalThinkMs),
           }),
         });
 
-        if (!response.ok) throw new Error("Failed to submit game");
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || `Sunucu hatası (${response.status})`);
+        }
 
         const result: GameSubmitResponse = await response.json();
         setSubmitResult(result);
@@ -326,6 +373,9 @@ export default function PlayPage() {
           </h2>
           <p className="result-subtitle">
             {errorMessage || "Bir hata oluştu."}
+          </p>
+          <p style={{ fontSize: "0.75rem", color: "var(--text-dim)", marginTop: "0.5rem" }}>
+            Cevap: {answersRef.current.length}/{memes.length} · Süre: {formatTimer(totalThinkMs)}
           </p>
           <button className="btn-primary" onClick={() => window.location.reload()}>
             Tekrar Dene
@@ -427,10 +477,12 @@ export default function PlayPage() {
             Tekrar Oyna
           </button>
 
-          {/* Sosyal linkler */}
+          {/* Sosyal linkler — premium CTA card */}
           <div className="result-social">
+            <p className="result-social-title">🎉 Bize Katıl!</p>
             <p className="result-social-text">
-              🏆 Kazananlar Instagram hikayemizde paylaşılacak!
+              Kazananlar Instagram hikayemizde paylaşılacak.
+              WhatsApp grubumuzda etkinlik duyuruları ve ödüller var!
             </p>
             <div className="result-social-links">
               <a
@@ -439,7 +491,7 @@ export default function PlayPage() {
                 rel="noopener noreferrer"
                 className="social-link instagram"
               >
-                📸 @hsdkarabuk
+                📸 Instagram
               </a>
               <a
                 href="https://chat.whatsapp.com/D37UjhZBCkK0DNFy699WED"
@@ -447,7 +499,7 @@ export default function PlayPage() {
                 rel="noopener noreferrer"
                 className="social-link whatsapp"
               >
-                💬 Gruba Katıl
+                💬 WhatsApp Grubu
               </a>
             </div>
           </div>
@@ -517,9 +569,13 @@ export default function PlayPage() {
             <h2 className="question-title">Bu meme&apos;i biliyor musun?</h2>
           )}
 
-          {phase === "answered" && (
-            <div className="feedback-alert">
-              ✅ Cevabın kaydedildi! Meme videosu geliyor...
+          {phase === "answered" && currentMeme && (
+            <div className={`feedback-alert ${
+              selectedOptionId === currentMeme.correctOptionId ? "feedback-correct" : "feedback-incorrect"
+            }`}>
+              {selectedOptionId === currentMeme.correctOptionId
+                ? "✅ Doğru bildin! Video geliyor..."
+                : "❌ Yanlış! Doğru cevap gösterildi."}
             </div>
           )}
 
@@ -533,9 +589,17 @@ export default function PlayPage() {
             {currentMeme?.options.map((option) => {
               const isSelected = selectedOptionId === option.id;
               const isLocked = phase === "answered" || phase === "video";
+              const isCorrect = option.id === currentMeme.correctOptionId;
               let btnClass = "option-btn";
-              if (isSelected) btnClass += " selected";
-              if (isLocked && isSelected) btnClass += " locked";
+
+              if (isLocked) {
+                // Cevap kilitlendikten sonra doğru/yanlış göster
+                if (isCorrect) btnClass += " correct";
+                if (isSelected && !isCorrect) btnClass += " incorrect";
+                if (isSelected) btnClass += " selected";
+              } else {
+                if (isSelected) btnClass += " selected";
+              }
 
               return (
                 <button
@@ -545,8 +609,11 @@ export default function PlayPage() {
                   onClick={() => handleSelectOption(option.id)}
                   disabled={phase !== "question"}
                 >
-                  {isLocked && isSelected && (
+                  {isLocked && isCorrect && (
                     <span className="check-icon">✓</span>
+                  )}
+                  {isLocked && isSelected && !isCorrect && (
+                    <span className="cross-icon">✗</span>
                   )}
                   {option.text}
                 </button>

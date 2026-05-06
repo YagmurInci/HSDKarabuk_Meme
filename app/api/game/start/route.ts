@@ -27,10 +27,14 @@ export async function POST(request: NextRequest) {
     const { sessionToken, memeIds } = await createGameSession(ip);
 
     // Meme'leri şıklarıyla birlikte çek (correctOptionId HARİÇ)
-    const memes = await prisma.meme.findMany({
+    const memesRaw = await prisma.meme.findMany({
       where: { id: { in: memeIds } },
       include: { correctOption: true },
     });
+
+    // ★ findMany sıralama garantisi vermez — memeIds sırasına göre sırala
+    const memeOrder = new Map(memeIds.map((id, i) => [id, i]));
+    const memes = memesRaw.sort((a, b) => (memeOrder.get(a.id) ?? 0) - (memeOrder.get(b.id) ?? 0));
 
     // Her meme için 4 şık hazırla (1 doğru + 3 rastgele yanlış)
     const memesForClient: MemeForClient[] = await Promise.all(
@@ -53,6 +57,7 @@ export async function POST(request: NextRequest) {
           youtubeUrl: meme.youtubeUrl,
           startTime: meme.startTime,
           endTime: meme.endTime,
+          correctOptionId: meme.correctOption.id,
           options: allOptions,
         };
       })

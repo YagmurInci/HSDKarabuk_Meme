@@ -141,8 +141,17 @@ export default function Leaderboard({ compact = false }: LeaderboardProps) {
                 {item.score.toLocaleString()}
               </span>
               {!compact && (
-                <span className="leaderboard-correct">
-                  🎯 {item.correctCount}
+                <span className="leaderboard-details">
+                  <span className="leaderboard-correct">🎯 {item.correctCount}</span>
+                  <span className="leaderboard-time">
+                    ⏱ {(() => {
+                      const totalSec = Math.floor(item.totalTime / 1000);
+                      const min = Math.floor(totalSec / 60);
+                      const sec = totalSec % 60;
+                      const tenths = Math.floor((item.totalTime % 1000) / 100);
+                      return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${tenths}`;
+                    })()}
+                  </span>
                 </span>
               )}
             </li>

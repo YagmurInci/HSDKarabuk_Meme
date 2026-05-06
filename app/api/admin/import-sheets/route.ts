@@ -47,8 +47,12 @@ function parseCSVLine(line: string): string[] {
   return result;
 }
 
-// YouTube URL'den video ID çıkar
+// YouTube URL'den video ID çıkar (veya zaten saf ID ise doğrudan döner)
 function extractVideoId(url: string): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  // Zaten saf video ID ise (11 karakter, alfanumerik + _ -)
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
   const patterns = [
     /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
     /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
@@ -56,7 +60,7 @@ function extractVideoId(url: string): string | null {
     /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
   ];
   for (const p of patterns) {
-    const match = url.match(p);
+    const match = trimmed.match(p);
     if (match) return match[1];
   }
   return null;
@@ -71,6 +75,14 @@ function extractStartTime(url: string): number {
 // Shorts mu?
 function isShorts(url: string): boolean {
   return url.includes("/shorts/");
+}
+
+// Türkçe uyumlu Title Case normalizer
+// "SUS LAN" → "Sus Lan", "baaak baak" → "Baaak Baak"
+function toTurkishTitleCase(str: string): string {
+  return str
+    .toLocaleLowerCase('tr-TR')
+    .replace(/(^|\s)\S/g, (match) => match.toLocaleUpperCase('tr-TR'));
 }
 
 interface ImportResult {
@@ -126,7 +138,8 @@ export async function POST(request: NextRequest) {
     // 4. Her satır için meme oluştur
     for (const line of dataLines) {
       const cols = parseCSVLine(line);
-      const memeName = cols[0]?.trim();
+      const rawName = cols[0]?.trim();
+      const memeName = rawName ? toTurkishTitleCase(rawName) : '';
       const imageUrl = cols[1]?.trim() || null;
       const youtubeUrl = cols[2]?.trim();
 
