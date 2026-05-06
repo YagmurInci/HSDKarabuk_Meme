@@ -47,8 +47,12 @@ function parseCSVLine(line: string): string[] {
   return result;
 }
 
-// YouTube URL'den video ID çıkar
+// YouTube URL'den video ID çıkar (veya zaten saf ID ise doğrudan döner)
 function extractVideoId(url: string): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  // Zaten saf video ID ise (11 karakter, alfanumerik + _ -)
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return trimmed;
   const patterns = [
     /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
     /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
@@ -56,7 +60,7 @@ function extractVideoId(url: string): string | null {
     /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
   ];
   for (const p of patterns) {
-    const match = url.match(p);
+    const match = trimmed.match(p);
     if (match) return match[1];
   }
   return null;
