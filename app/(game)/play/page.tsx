@@ -410,10 +410,12 @@ export default function PlayPage() {
             Tekrar Oyna
           </button>
 
-          {/* Sosyal linkler */}
+          {/* Sosyal linkler — premium CTA card */}
           <div className="result-social">
+            <p className="result-social-title">🎉 Bize Katıl!</p>
             <p className="result-social-text">
-              🏆 Kazananlar Instagram hikayemizde paylaşılacak!
+              Kazananlar Instagram hikayemizde paylaşılacak.
+              WhatsApp grubumuzda etkinlik duyuruları ve ödüller var!
             </p>
             <div className="result-social-links">
               <a
@@ -422,7 +424,7 @@ export default function PlayPage() {
                 rel="noopener noreferrer"
                 className="social-link instagram"
               >
-                📸 @hsdkarabuk
+                📸 Instagram
               </a>
               <a
                 href="https://chat.whatsapp.com/D37UjhZBCkK0DNFy699WED"
@@ -430,7 +432,7 @@ export default function PlayPage() {
                 rel="noopener noreferrer"
                 className="social-link whatsapp"
               >
-                💬 Gruba Katıl
+                💬 WhatsApp Grubu
               </a>
             </div>
           </div>
