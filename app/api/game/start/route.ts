@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
           youtubeUrl: meme.youtubeUrl,
           startTime: meme.startTime,
           endTime: meme.endTime,
+          correctOptionId: meme.correctOption.id,
           options: allOptions,
         };
       })

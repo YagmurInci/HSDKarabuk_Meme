@@ -204,14 +204,26 @@ body {
 }
 
 .feedback-alert {
-  background-color: var(--correct-green-bg);
-  color: var(--correct-green);
-  border: 1px solid var(--correct-green);
   padding: 12px;
   border-radius: 10px;
   text-align: center;
   font-weight: bold;
   margin-bottom: 24px;
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+
+.feedback-alert.feedback-correct {
+  background-color: var(--correct-green-bg);
+  color: var(--correct-green);
+  border-color: var(--correct-green);
+}
+
+.feedback-alert.feedback-incorrect {
+  background-color: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border-color: #ef4444;
 }
 
 /* ŞIK BUTONLARI */
@@ -274,6 +286,7 @@ body {
 .option-btn.correct {
   border-color: var(--correct-green);
   background-color: var(--correct-green-bg);
+  opacity: 1 !important;
 }
 
 .option-btn.correct::before {
@@ -281,25 +294,38 @@ body {
   color: #fff;
 }
 
-.option-btn.locked {
-  border-color: var(--accent-purple);
-  background-color: var(--accent-purple-selected);
-  pointer-events: none;
+.option-btn.incorrect {
+  border-color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.12);
+  opacity: 1 !important;
 }
 
-.option-btn.locked::before {
-  background-color: var(--accent-purple-alpha-40);
+.option-btn.incorrect::before {
+  background-color: #ef4444;
   color: #fff;
 }
 
 .option-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
+}
+
+/* Doğru/yanlış olan şıklar disabled olsa bile görünsün */
+.option-btn.correct:disabled,
+.option-btn.incorrect:disabled {
+  opacity: 1;
 }
 
 .check-icon {
   margin-right: -4px;
   color: var(--correct-green);
+  font-weight: bold;
+  display: inline-block;
+}
+
+.cross-icon {
+  margin-right: -4px;
+  color: #ef4444;
   font-weight: bold;
   display: inline-block;
 }

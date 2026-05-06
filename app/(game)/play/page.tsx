@@ -531,9 +531,13 @@ export default function PlayPage() {
             <h2 className="question-title">Bu meme&apos;i biliyor musun?</h2>
           )}
 
-          {phase === "answered" && (
-            <div className="feedback-alert">
-              ⏳ Cevabın kaydedildi! Video geliyor...
+          {phase === "answered" && currentMeme && (
+            <div className={`feedback-alert ${
+              selectedOptionId === currentMeme.correctOptionId ? "feedback-correct" : "feedback-incorrect"
+            }`}>
+              {selectedOptionId === currentMeme.correctOptionId
+                ? "✅ Doğru bildin! Video geliyor..."
+                : "❌ Yanlış! Doğru cevap gösterildi."}
             </div>
           )}
 
@@ -547,9 +551,17 @@ export default function PlayPage() {
             {currentMeme?.options.map((option) => {
               const isSelected = selectedOptionId === option.id;
               const isLocked = phase === "answered" || phase === "video";
+              const isCorrect = option.id === currentMeme.correctOptionId;
               let btnClass = "option-btn";
-              if (isSelected) btnClass += " selected";
-              if (isLocked && isSelected) btnClass += " locked";
+
+              if (isLocked) {
+                // Cevap kilitlendikten sonra doğru/yanlış göster
+                if (isCorrect) btnClass += " correct";
+                if (isSelected && !isCorrect) btnClass += " incorrect";
+                if (isSelected) btnClass += " selected";
+              } else {
+                if (isSelected) btnClass += " selected";
+              }
 
               return (
                 <button
@@ -559,8 +571,11 @@ export default function PlayPage() {
                   onClick={() => handleSelectOption(option.id)}
                   disabled={phase !== "question"}
                 >
-                  {isLocked && isSelected && (
+                  {isLocked && isCorrect && (
                     <span className="check-icon">✓</span>
+                  )}
+                  {isLocked && isSelected && !isCorrect && (
+                    <span className="cross-icon">✗</span>
                   )}
                   {option.text}
                 </button>
