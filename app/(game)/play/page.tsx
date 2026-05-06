@@ -61,6 +61,10 @@ export default function PlayPage() {
   const currentMeme = memes[currentIndex];
   const isLastQuestion = currentIndex + 1 === memes.length;
 
+  // ★ currentIndex ref — setTimeout closure'larında stale olmaz
+  const currentIndexRef = useRef(currentIndex);
+  currentIndexRef.current = currentIndex;
+
   // Username yükle
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -209,6 +213,9 @@ export default function PlayPage() {
   const answersRef = useRef(answers);
   answersRef.current = answers;
 
+  // ★ Feedback → video geçişi timeout ref (iptal edilebilir)
+  const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Cevapla butonu
   const handleSubmitAnswer = () => {
     if (!selectedOptionId || !currentMeme) return;
@@ -227,8 +234,17 @@ export default function PlayPage() {
     // "answered" fazına geç — feedback göster
     setPhase("answered");
 
+    // ★ Önceki timeout varsa temizle
+    if (feedbackTimeoutRef.current) {
+      clearTimeout(feedbackTimeoutRef.current);
+    }
+
     // 1.5 saniye feedback göster, sonra videoya geç
-    setTimeout(() => {
+    // ★ Hangi sorudayız kaydet — timeout geldiğinde hâlâ aynı sorudaysak video başlat
+    const questionIndex = currentIndex;
+    feedbackTimeoutRef.current = setTimeout(() => {
+      // ★ Guard: Kullanıcı "Devam Et"e basmışsa currentIndexRef değişmiş olur
+      if (currentIndexRef.current !== questionIndex) return;
       setPhase("video");
       const videoId = getVideoId(currentMeme.youtubeUrl);
       if (videoId) {
@@ -243,7 +259,6 @@ export default function PlayPage() {
   const stopAndDestroyPlayer = () => {
     if (playerRef.current) {
       try {
-        // Önce durdur (arka planda çalmaya devam etmesin)
         if (typeof playerRef.current.stopVideo === "function") {
           playerRef.current.stopVideo();
         }
@@ -259,6 +274,11 @@ export default function PlayPage() {
 
   // Devam Et / Sonraki
   const handleNext = async () => {
+    // ★ Feedback timeout'u iptal et (video bleed engeli)
+    if (feedbackTimeoutRef.current) {
+      clearTimeout(feedbackTimeoutRef.current);
+      feedbackTimeoutRef.current = null;
+    }
     // ★ YouTube player'ı KESİNLİKLE durdur ve yok et
     stopAndDestroyPlayer();
 
