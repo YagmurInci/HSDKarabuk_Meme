@@ -533,7 +533,7 @@ export default function PlayPage() {
 
           {phase === "answered" && (
             <div className="feedback-alert">
-              ✅ Cevabın kaydedildi! Meme videosu geliyor...
+              ⏳ Cevabın kaydedildi! Video geliyor...
             </div>
           )}
 
