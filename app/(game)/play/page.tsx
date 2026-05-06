@@ -58,13 +58,18 @@ export default function PlayPage() {
   const [submitResult, setSubmitResult] = useState<GameSubmitResponse | null>(null);
   const [username, setUsername] = useState<string>("Oyuncu");
   const [isMuted, setIsMuted] = useState(false);
+  const [isReadyToStart, setIsReadyToStart] = useState(false);
   
   const playerRef = useRef<any>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const correctAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.muted = isMuted;
+    }
+    if (correctAudioRef.current) {
+      correctAudioRef.current.muted = isMuted;
     }
   }, [isMuted]);
 
@@ -113,14 +118,11 @@ export default function PlayPage() {
         const data: GameStartResponse = await response.json();
         setSessionToken(data.sessionToken);
         setMemes(data.memes);
-        setPhase("question");
-        setIsTimerRunning(true);
+        setIsReadyToStart(true);
       } catch (error) {
-        console.error("API Error, using mock data.", error);
         setSessionToken("mock-session");
         setMemes(MOCK_MEMES);
-        setPhase("question");
-        setIsTimerRunning(true);
+        setIsReadyToStart(true);
       }
     };
     startGame();
@@ -191,6 +193,13 @@ export default function PlayPage() {
     if (!selectedOptionId) return;
     
     const currentMeme = memes[currentIndex];
+
+    // Doğru cevap efekti
+    if (correctAudioRef.current) {
+      correctAudioRef.current.currentTime = 0;
+      correctAudioRef.current.play().catch(e => console.log(e));
+    }
+
     setAnswers(prev => [
       ...prev,
       { memeId: currentMeme.id, selectedOptionId: selectedOptionId }
@@ -255,8 +264,22 @@ export default function PlayPage() {
 
   if (phase === "loading") {
     return (
-      <div id="game-container">
-        <h2>Yükleniyor...</h2>
+      <div id="game-layout" style={{ justifyContent: "center", alignItems: "center" }}>
+        {isReadyToStart ? (
+          <button 
+            className="btn-primary" 
+            style={{ maxWidth: "300px", fontSize: "20px", padding: "20px" }}
+            onClick={() => {
+              setPhase("question");
+              setIsTimerRunning(true);
+              // Kullanıcı etkileşimi olduğu için ses artık sorunsuz çalabilir
+            }}
+          >
+            🎮 Oyuna Başla!
+          </button>
+        ) : (
+          <h2 style={{ color: "#fff" }}>Yükleniyor...</h2>
+        )}
       </div>
     );
   }
@@ -316,8 +339,9 @@ export default function PlayPage() {
 
   return (
     <div id="game-layout">
-      {/* Arka plan müziği (public klasöründe bg-music.mp3 olmalıdır) */}
-      <audio ref={audioRef} src="/bg-music.mp3" loop />
+      {/* Arka plan müziği */}
+      <audio ref={audioRef} src="https://upload.wikimedia.org/wikipedia/commons/3/34/Suspense.ogg" loop />
+      <audio ref={correctAudioRef} src="https://upload.wikimedia.org/wikipedia/commons/e/e5/Magical_sound_effect.ogg" />
       
       {/* Üst Bar */}
       <div id="game-header-top">

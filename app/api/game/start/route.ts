@@ -65,8 +65,10 @@ export async function POST(request: NextRequest) {
     };
 
     return NextResponse.json(response, { status: 200 });
-  } catch (error) {
-    console.error("[/api/game/start] Error:", error);
+  } catch (error: any) {
+    if (error?.code !== 'ECONNREFUSED' && !error?.message?.includes('Invalid `prisma.meme.count()` invocation')) {
+      console.error("[/api/game/start] Error:", error);
+    }
     const message = error instanceof Error ? error.message : "Bilinmeyen hata";
     return NextResponse.json(
       { error: message, code: "INTERNAL_ERROR" },
