@@ -13,19 +13,6 @@ interface LeaderboardProps {
   compact?: boolean;
 }
 
-// Sonraki 3-saatlik periyodun başlangıcını hesapla
-function getNextResetTime(): Date {
-  const now = new Date();
-  const hours = now.getHours();
-  const nextReset = new Date(now);
-  nextReset.setMinutes(0, 0, 0);
-  nextReset.setHours(Math.ceil((hours + 1) / 3) * 3);
-  if (nextReset <= now) {
-    nextReset.setHours(nextReset.getHours() + 3);
-  }
-  return nextReset;
-}
-
 function formatCountdown(ms: number): string {
   if (ms <= 0) return "Sıfırlanıyor...";
   const totalSec = Math.floor(ms / 1000);
@@ -42,6 +29,7 @@ export default function Leaderboard({ compact = false }: LeaderboardProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [countdown, setCountdown] = useState("");
+  const [nextResetMs, setNextResetMs] = useState<number | null>(null);
 
   const fetchLeaderboard = useCallback(async () => {
     try {
@@ -67,17 +55,38 @@ export default function Leaderboard({ compact = false }: LeaderboardProps) {
     return () => clearInterval(interval);
   }, [fetchLeaderboard]);
 
+  // Server'dan geri sayım bilgisi al
+  useEffect(() => {
+    const fetchTimer = async () => {
+      try {
+        const res = await fetch("/api/leaderboard/timer");
+        const json = await res.json();
+        setNextResetMs(new Date(json.nextResetAt).getTime());
+      } catch {
+        // Fallback: 3 saat sonra
+        setNextResetMs(Date.now() + 3 * 60 * 60 * 1000);
+      }
+    };
+    fetchTimer();
+    const interval = setInterval(fetchTimer, 60000); // dakikada bir senkronize et
+    return () => clearInterval(interval);
+  }, []);
+
   // Geri sayım
   useEffect(() => {
+    if (nextResetMs === null) return;
     const tick = () => {
-      const next = getNextResetTime();
-      const remaining = next.getTime() - Date.now();
+      const remaining = nextResetMs - Date.now();
       setCountdown(formatCountdown(remaining));
+      if (remaining <= 0) {
+        // Sıfırlandı — yeniden çek
+        fetchLeaderboard();
+      }
     };
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [nextResetMs, fetchLeaderboard]);
 
   return (
     <div
