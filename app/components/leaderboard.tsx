@@ -34,17 +34,8 @@ export default function Leaderboard({ compact = false }: LeaderboardProps) {
       const result: LeaderboardItem[] = await response.json();
       setData(result);
     } catch (err) {
-      console.error("Leaderboard API Hatası, mock data kullanılıyor:", err);
-      // Prisma çalışmadığı için MOCK data gösteriliyor
-      const mockData: LeaderboardItem[] = [
-        { rank: 1, username: "MemeKralı", score: 14500, correctCount: 20 },
-        { rank: 2, username: "ProOyuncu", score: 12400, correctCount: 18 },
-        { rank: 3, username: "MemeGuesser", score: 10200, correctCount: 15 },
-        { rank: 4, username: "Anonim", score: 8500, correctCount: 12 },
-        { rank: 5, username: "Noob", score: 4200, correctCount: 6 }
-      ];
-      setData(mockData.slice(0, compact ? 5 : 20));
-      setError(false); // mock data ile başarıyla yüklendi sayıyoruz
+      console.error("Leaderboard Hatası:", err);
+      setError(true);
     } finally {
       setLoading(false);
     }
