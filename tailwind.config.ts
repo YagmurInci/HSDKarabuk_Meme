@@ -9,15 +9,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        surface: "var(--surface)",
-        primary: "var(--primary)",
-        primaryHover: "var(--primary-hover)",
-        accent: "var(--accent)",
-        textMain: "var(--text-main)",
-        textMuted: "var(--text-muted)",
-        success: "var(--success)",
-        error: "var(--error)",
+        background: "#0f172a",
+        surface: "#1e293b",
+        primary: "#8b5cf6",
+        primaryHover: "#7c3aed",
+        accent: "#0ea5e9",
+        textMain: "#f8fafc",
+        textMuted: "#94a3b8",
+        success: "#22c55e",
+        error: "#ef4444",
       },
       animation: {
         'bounce-slight': 'bounceSlight 0.3s ease-in-out',
