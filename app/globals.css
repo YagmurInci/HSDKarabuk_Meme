@@ -103,7 +103,7 @@ body {
   }
 
   .video-wrapper {
-    @apply relative w-full aspect-video rounded-3xl overflow-hidden shadow-2xl border border-white/10 bg-black group;
+    @apply relative w-full aspect-video rounded-3xl overflow-hidden shadow-2xl border border-white/10 bg-black;
   }
 
   .youtube-player-placeholder {
@@ -115,7 +115,7 @@ body {
   }
 
   .option-btn {
-    @apply relative overflow-hidden bg-surface text-textMain text-left p-5 rounded-2xl border-2 border-white/5 hover:border-primary/50 hover:bg-surface/80 transition-all duration-200 font-medium text-lg group transform hover:-translate-y-1 active:translate-y-0;
+    @apply relative overflow-hidden bg-surface text-textMain text-left p-5 rounded-2xl border-2 border-white/5 hover:border-primary/50 hover:bg-surface/80 transition-all duration-200 font-medium text-lg transform hover:-translate-y-1 active:translate-y-0;
   }
 
   /* Dinamik State Sınıfları (Ekip arkadaşların tıklama sonrası bu classları eklemeli) */
