@@ -10,7 +10,7 @@ import type {
 } from "@/app/lib/types";
 import "./play.css";
 
-type GamePhase = "loading" | "question" | "video" | "result";
+type GamePhase = "loading" | "question" | "video" | "result" | "error";
 
 declare global {
   interface Window {
@@ -18,33 +18,6 @@ declare global {
     onYouTubeIframeAPIReady: () => void;
   }
 }
-
-const MOCK_MEMES: MemeForClient[] = [
-  {
-    id: "mock-1",
-    youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-    startTime: 42,
-    endTime: 50,
-    options: [
-      { id: "opt1", text: "Rickroll" },
-      { id: "opt2", text: "Darude Sandstorm" },
-      { id: "opt3", text: "Trololo" },
-      { id: "opt4", text: "Numa Numa" }
-    ]
-  },
-  {
-    id: "mock-2",
-    youtubeUrl: "https://www.youtube.com/watch?v=VqB1uoDTdKM",
-    startTime: 15,
-    endTime: 25,
-    options: [
-      { id: "opt1", text: "Kedi videosu" },
-      { id: "opt2", text: "Köpek videosu" },
-      { id: "opt3", text: "Kuş videosu" },
-      { id: "opt4", text: "Hamster videosu" }
-    ]
-  }
-];
 
 export default function PlayPage() {
   const [phase, setPhase] = useState<GamePhase>("loading");
@@ -58,6 +31,7 @@ export default function PlayPage() {
   const [submitResult, setSubmitResult] = useState<GameSubmitResponse | null>(null);
   const [username, setUsername] = useState<string>("Oyuncu");
   const [isMuted, setIsMuted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
   
   const playerRef = useRef<any>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -109,18 +83,19 @@ export default function PlayPage() {
     const startGame = async () => {
       try {
         const response = await fetch("/api/game/start", { method: "POST" });
-        if (!response.ok) throw new Error("Failed to start game");
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || "Oyun başlatılamadı.");
+        }
         const data: GameStartResponse = await response.json();
         setSessionToken(data.sessionToken);
         setMemes(data.memes);
         setPhase("question");
         setIsTimerRunning(true);
       } catch (error) {
-        console.error("API Error, using mock data.", error);
-        setSessionToken("mock-session");
-        setMemes(MOCK_MEMES);
-        setPhase("question");
-        setIsTimerRunning(true);
+        console.error("[PlayPage] Oyun başlatma hatası:", error);
+        setErrorMessage(error instanceof Error ? error.message : "Sunucuya bağlanılamadı.");
+        setPhase("error");
       }
     };
     startGame();
@@ -241,17 +216,33 @@ export default function PlayPage() {
         setSubmitResult(result);
         setPhase("result");
       } catch (error) {
-        console.error("API Error, using mock result.", error);
-        setSubmitResult({
-          score: Math.floor(Math.random() * 5000) + 5000,
-          correctCount: answers.length,
-          totalQuestions: memes.length,
-          rank: 3
-        });
-        setPhase("result");
+        console.error("[PlayPage] Skor gönderme hatası:", error);
+        setErrorMessage(error instanceof Error ? error.message : "Skor gönderilemedi.");
+        setPhase("error");
       }
     }
   };
+
+  if (phase === "error") {
+    return (
+      <div id="game-container">
+        <div id="game-result">
+          <h2 className="result-score-big" style={{ color: "var(--error)" }}>❌</h2>
+          <p className="result-subtitle">{errorMessage || "Bir hata oluştu."}</p>
+          <button
+            className="btn-primary"
+            onClick={() => window.location.reload()}
+            style={{ marginTop: "1rem" }}
+          >
+            Tekrar Dene
+          </button>
+          <a href="/" className="btn-primary" style={{ marginTop: "0.5rem", background: "var(--surface)" }}>
+            Ana Sayfa
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   if (phase === "loading") {
     return (
