@@ -77,6 +77,14 @@ function isShorts(url: string): boolean {
   return url.includes("/shorts/");
 }
 
+// Türkçe uyumlu Title Case normalizer
+// "SUS LAN" → "Sus Lan", "baaak baak" → "Baaak Baak"
+function toTurkishTitleCase(str: string): string {
+  return str
+    .toLocaleLowerCase('tr-TR')
+    .replace(/(^|\s)\S/g, (match) => match.toLocaleUpperCase('tr-TR'));
+}
+
 interface ImportResult {
   imported: number;
   skipped: number;
@@ -130,7 +138,8 @@ export async function POST(request: NextRequest) {
     // 4. Her satır için meme oluştur
     for (const line of dataLines) {
       const cols = parseCSVLine(line);
-      const memeName = cols[0]?.trim();
+      const rawName = cols[0]?.trim();
+      const memeName = rawName ? toTurkishTitleCase(rawName) : '';
       const imageUrl = cols[1]?.trim() || null;
       const youtubeUrl = cols[2]?.trim();
 

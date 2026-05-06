@@ -68,11 +68,16 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Doğru cevap boş olamaz.", code: "VALIDATION_ERROR" } satisfies ApiError, { status: 400 });
       }
 
+      // Türkçe Title Case normalize
+      const normalized = trimmed
+        .toLocaleLowerCase('tr-TR')
+        .replace(/(^|\s)\S/g, (m) => m.toLocaleUpperCase('tr-TR'));
+
       // Upsert: varsa bul, yoksa oluştur
       const option = await prisma.option.upsert({
-        where: { text: trimmed },
+        where: { text: normalized },
         update: {}, // zaten varsa dokunma
-        create: { text: trimmed },
+        create: { text: normalized },
       });
       optionId = option.id;
     }
