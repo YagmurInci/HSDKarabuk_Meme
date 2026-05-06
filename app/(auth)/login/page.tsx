@@ -2,97 +2,202 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Leaderboard from "@/app/components/leaderboard";
+
+// ============================================
+// Arşivdeki popüler Türk meme YouTube videoları
+// Arka plan dekor ve sağ taraftaki floating kartlar için kullanılıyor.
+// ============================================
+const SHOWCASE_MEMES = [
+  { id: "j0gRQNEJGmk", title: "Kaplumbağa Ninen" },
+  { id: "AYLnGsWj7us", title: "Ben İmamım Gülmem" },
+  { id: "efOyzBCLreg", title: "Yazık Kafana" },
+  { id: "1QQSn9JCHpo", title: "SUS LAN" },
+  { id: "EmRjDzwrCmg", title: "Nereye Gidiyorsun?" },
+  { id: "GMSi3sU7IAM", title: "Gülmem Geldi" },
+  { id: "YOVVcVhaq7k", title: "Abi Geldiler Abi" },
+  { id: "828WG2TJGNk", title: "Aç Lan Kapıyı" },
+  { id: "5WdN6vDCy2o", title: "Böyle Bir Şey Olabilir mi" },
+  { id: "hWlFloxqMxA", title: "2 Gün Dinozor Gördüm" },
+  { id: "u2zxWEuj3S8", title: "Menüde Ne Var?" },
+  { id: "RYw8GehHBbs", title: "İyi ki Doğdun Muzaffer" },
+];
+
+// YouTube thumbnail URL builder
+function thumb(videoId: string) {
+  return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+}
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
 
-  // Yasaklı kelimeler listesi (Görev dökümanındaki liste)
   const bannedWords = ["admin", "fuck", "shit", "sikti", "amk", "orospu", "piç"];
 
   const validateUsername = (name: string) => {
     const regex = /^[a-zA-Z0-9çğıöşüÇĞİÖŞÜ\s_-]+$/;
-
     if (!name) return "Kullanıcı adı boş bırakılamaz.";
     if (name.length < 2) return "İsim en az 2 karakter olmalı.";
     if (name.length > 20) return "İsim en fazla 20 karakter olmalı.";
-    if (!regex.test(name)) return "Geçersiz karakterler (Sadece harf, rakam, _, -).";
-    if (bannedWords.some(word => name.toLowerCase().includes(word))) return "Bu ismi kullanamazsın!";
-    
+    if (!regex.test(name)) return "Geçersiz karakterler.";
+    if (bannedWords.some((w) => name.toLowerCase().includes(w)))
+      return "Bu ismi kullanamazsın!";
     return "";
   };
 
-  const handleStartGame = (e: React.FormEvent) => {
+  const handleStart = (e: React.FormEvent) => {
     e.preventDefault();
-    const validationError = validateUsername(username);
-
-    if (validationError) {
-      setError(validationError);
+    const err = validateUsername(username);
+    if (err) {
+      setError(err);
     } else {
-      // ✅ LocalStorage'a kaydet
       localStorage.setItem("meme_guesser_username", username);
-      // ✅ Oyun sayfasına yönlendir
       router.push("/play");
     }
   };
 
+  // Floating meme kartları için 5 tanesi seçilir
+  const floatingMemes = SHOWCASE_MEMES.slice(0, 5);
+
+  // Arka plan thumbnail grid'i için diğerleri
+  const bgMemes = SHOWCASE_MEMES.slice(2, 10);
+
   return (
-    <main id="login-page" className="login-container">
-      <div id="login-header" className="login-header">
-        <h1 className="login-title">Meme Guesser</h1>
-        <p className="login-subtitle">YouTube meme tahmin oyunu</p>
+    <main className="login-page">
+      {/* --- Arka plan thumbnail dekor --- */}
+      <div className="thumbnail-grid" aria-hidden="true">
+        {bgMemes.map((m, i) => {
+          // Dağınık yerleşim
+          const positions = [
+            { top: "8%", left: "5%", w: 140 },
+            { top: "60%", left: "2%", w: 120 },
+            { top: "20%", right: "3%", w: 130 },
+            { top: "75%", right: "8%", w: 150 },
+            { top: "40%", left: "30%", w: 100 },
+            { bottom: "10%", left: "45%", w: 110 },
+            { top: "5%", left: "55%", w: 90 },
+            { bottom: "25%", right: "25%", w: 120 },
+          ];
+          const pos = positions[i % positions.length];
+          return (
+            <div
+              key={m.id}
+              className="thumbnail-item"
+              style={{
+                ...pos,
+                width: pos.w,
+                height: pos.w * 0.75,
+                animationDelay: `${i * 3}s`,
+                animationDuration: `${18 + i * 2}s`,
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={thumb(m.id)}
+                alt=""
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+          );
+        })}
       </div>
 
-      <form id="login-form" className="login-form" onSubmit={handleStartGame}>
-        <div className="input-group">
-          <label htmlFor="username-input" className="input-label">
-            Kullanıcı Adın
-          </label>
-          <input
-            id="username-input"
-            className="username-input text-black p-2 rounded border"
-            type="text"
-            placeholder="Adını gir..."
-            value={username}
-            onChange={(e) => {
-              setUsername(e.target.value);
-              setError(""); // Yazmaya başlayınca hatayı temizle
-            }}
+      {/* --- Hero --- */}
+      <section className="hero-section">
+        {/* Sol: Login */}
+        <div className="login-column">
+          <div className="login-badge">Meme Tahmin Oyunu</div>
+
+          <h1 className="login-heading">
+            <span className="gradient-text">Meme</span>
+            <br />
+            Guesser
+          </h1>
+
+          <p className="login-subtitle">
+            YouTube&apos;daki efsane <strong>meme kliplerini</strong> izle,
+            hangi meme olduğunu tahmin et. En hızlı sen ol,
+            <strong> lider tablosunda</strong> yerini al.
+          </p>
+
+          <form
+            id="login-form"
+            className="login-card"
+            onSubmit={handleStart}
             autoComplete="off"
-          />
-          
-          {/* ✅ Hata mesajı artık burada görünecek */}
-          {error && (
-            <span id="username-error" className="input-error" style={{ color: "red", display: "block", marginTop: "5px" }}>
-              {error}
-            </span>
-          )}
+          >
+            <div className="input-wrapper">
+              <label htmlFor="username-input" className="input-label">
+                Kullanıcı Adın
+              </label>
+              <input
+                id="username-input"
+                className="username-input"
+                type="text"
+                placeholder="Adını gir..."
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  setError("");
+                }}
+                maxLength={20}
+              />
+              {error && (
+                <span id="username-error" className="input-error">
+                  {error}
+                </span>
+              )}
+            </div>
+
+            <button
+              id="start-game-btn"
+              className="start-btn"
+              type="submit"
+              disabled={username.length < 2}
+            >
+              Oyuna Başla →
+            </button>
+          </form>
+
+          {/* Leaderboard */}
+          <div className="leaderboard-section">
+            <Leaderboard compact={true} />
+          </div>
         </div>
 
-        <button
-          id="start-game-btn"
-          className="start-game-btn"
-          type="submit"
-          disabled={username.length < 2} // ✅ Validasyon kuralı
-          style={{ 
-            marginTop: "10px",
-            padding: "10px",
-            backgroundColor: username.length < 2 ? "#ccc" : "#0070f3",
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-            cursor: username.length < 2 ? "not-allowed" : "pointer"
-          }}
-        >
-          Oyuna Başla
-        </button>
-      </form>
+        {/* Sağ: Floating meme kartları */}
+        <div className="visual-column" aria-hidden="true">
+          {floatingMemes.map((m) => (
+            <div key={m.id} className="meme-float-card">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={thumb(m.id)}
+                alt={m.title}
+                loading="lazy"
+                decoding="async"
+              />
+              <div className="play-icon" />
+              <div className="meme-label">{m.title}</div>
+            </div>
+          ))}
+        </div>
+      </section>
 
-      <div id="leaderboard-wrapper" className="leaderboard-wrapper">
-        {/* TODO: [NESLİHAN] Leaderboard component buraya yerleştirilecek */}
-        <p style={{ opacity: 0.5, marginTop: "20px" }}>Liderlik Tablosu Bekleniyor...</p>
-      </div>
+      {/* --- Footer --- */}
+      <footer className="page-footer">
+        <p>
+          Meme Guesser — HSD Karabük &nbsp;·&nbsp;{" "}
+          <a
+            href="https://github.com/mlhgks0868/HSDKarabuk_Meme"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            GitHub
+          </a>
+        </p>
+      </footer>
     </main>
   );
-} 
+}

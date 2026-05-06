@@ -1,8 +1,13 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
 
-// --- TİP TANIMLAMALARI ---
+// ============================================
+// ADMIN PANELİ — Meme Ekleme & Yönetim
+// Tek adımlı iş akışı:
+// YouTube URL + Zaman Aralığı + Doğru Cevap → Meme oluştur
+// ============================================
+
 interface Option {
   id: string;
   text: string;
@@ -14,253 +19,357 @@ interface Meme {
   startTime: number;
   endTime: number;
   correctOption?: Option;
+  createdAt: string;
+}
+
+// YouTube URL'den video ID çıkar
+function extractVideoId(url: string): string | null {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+    /^([a-zA-Z0-9_-]{11})$/,
+  ];
+  for (const p of patterns) {
+    const match = url.match(p);
+    if (match) return match[1];
+  }
+  return null;
 }
 
 export default function BackofficePage() {
-  // --- KİMLİK DOĞRULAMA STATE'LERİ ---
-  const [password, setPassword] = useState('');
+  // --- AUTH ---
+  const [password, setPassword] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loginError, setLoginError] = useState('');
+  const [loginError, setLoginError] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
 
-  // --- VERİ STATE'LERİ ---
-  const [options, setOptions] = useState<Option[]>([]);
+  // --- DATA ---
   const [memes, setMemes] = useState<Meme[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // --- FORM STATE'LERİ ---
-  const [optionText, setOptionText] = useState('');
-  
-  const [youtubeUrl, setYoutubeUrl] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
-  const [correctOptionId, setCorrectOptionId] = useState('');
+  // --- FORM ---
+  const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [correctAnswer, setCorrectAnswer] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
 
-  // 1. API'DEN VERİLERİ ÇEKME FONKSİYONU
-  const fetchData = useCallback(async () => {
+  // --- STATS ---
+  const memeCount = memes.length;
+  const uniqueAnswers = new Set(memes.map((m) => m.correctOption?.text)).size;
+
+  // Video preview
+  const videoId = extractVideoId(youtubeUrl);
+
+  // Fetch memes
+  const fetchMemes = useCallback(async () => {
+    if (!password) return;
+    setLoading(true);
     try {
-      const optRes = await fetch('/api/admin/options', { headers: { 'x-admin-password': password } });
-      if (optRes.ok) setOptions(await optRes.json());
-
-      const memeRes = await fetch('/api/admin/memes', { headers: { 'x-admin-password': password } });
-      if (memeRes.ok) setMemes(await memeRes.json());
-    } catch (error) {
-      console.error("Veriler çekilirken hata oluştu:", error);
+      const res = await fetch("/api/admin/memes", {
+        headers: { "x-admin-password": password },
+      });
+      if (res.ok) {
+        setMemes(await res.json());
+      }
+    } catch (err) {
+      console.error("Fetch error:", err);
+    } finally {
+      setLoading(false);
     }
   }, [password]);
 
-  // (useEffect hatası giderildi)
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchData();
-    }
-  }, [isAuthenticated, fetchData]);
+    if (isAuthenticated) fetchMemes();
+  }, [isAuthenticated, fetchMemes]);
 
-  // 2. GİRİŞ YAPMA FONKSİYONU
-  const handleLogin = (e: React.FormEvent) => {
+  // Login — server-side validation
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === 'hackathon-admin-2026') {
-      setIsAuthenticated(true);
-      setLoginError('');
-    } else {
-      setLoginError('Hatalı şifre!');
+    setLoginLoading(true);
+    setLoginError("");
+
+    try {
+      // Test auth by calling the API
+      const res = await fetch("/api/admin/memes", {
+        headers: { "x-admin-password": password },
+      });
+      if (res.ok) {
+        setIsAuthenticated(true);
+      } else {
+        setLoginError("Hatalı şifre!");
+      }
+    } catch {
+      setLoginError("Sunucu hatası.");
+    } finally {
+      setLoginLoading(false);
     }
   };
 
-  // 3. YENİ ŞIK EKLEME FONKSİYONU
-  const handleAddOption = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!optionText) return alert('Şık metni boş olamaz!');
-
-    const res = await fetch('/api/admin/options', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
-      body: JSON.stringify({ text: optionText })
-    });
-
-    if (res.ok) {
-      setOptionText('');
-      fetchData();
-      alert('Şık başarıyla eklendi!');
-    } else {
-      const data = await res.json();
-      alert(`Hata: ${data.error}`);
-    }
-  };
-
-  // 4. ŞIK SİLME FONKSİYONU
-  const handleDeleteOption = async (id: string) => {
-    if (!window.confirm('Bu şıkkı silmek istediğinize emin misiniz?')) return;
-    
-    const res = await fetch(`/api/admin/options?id=${id}`, {
-      method: 'DELETE',
-      headers: { 'x-admin-password': password }
-    });
-
-    if (res.ok) fetchData();
-    else alert('Silinemedi. Bu şık bir Meme içinde kullanılıyor olabilir.');
-  };
-
-  // 5. YENİ MEME EKLEME FONKSİYONU
+  // Add meme — tek adım
   const handleAddMeme = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!youtubeUrl || !startTime || !endTime || !correctOptionId) {
-      return alert('Lütfen tüm alanları doldurun!');
+    setSuccessMsg("");
+
+    if (!youtubeUrl || !startTime || !endTime || !correctAnswer) {
+      return alert("Tüm alanları doldur!");
     }
 
-    const res = await fetch('/api/admin/memes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
-      body: JSON.stringify({
-        youtubeUrl,
-        startTime: Number(startTime),
-        endTime: Number(endTime),
-        correctOptionId
-      })
-    });
+    if (!videoId) {
+      return alert("Geçersiz YouTube URL'si!");
+    }
 
-    if (res.ok) {
-      setYoutubeUrl(''); setStartTime(''); setEndTime(''); setCorrectOptionId('');
-      fetchData();
-      alert('Meme başarıyla eklendi!');
-    } else {
-      const data = await res.json();
-      alert(`Hata: ${data.error}`);
+    const start = Number(startTime);
+    const end = Number(endTime);
+    if (isNaN(start) || isNaN(end) || start >= end) {
+      return alert("Zaman aralığı geçersiz!");
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/admin/memes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-password": password,
+        },
+        body: JSON.stringify({
+          youtubeUrl: youtubeUrl.trim(),
+          startTime: start,
+          endTime: end,
+          correctAnswer: correctAnswer.trim(),
+        }),
+      });
+
+      if (res.ok) {
+        const created = await res.json();
+        setYoutubeUrl("");
+        setStartTime("");
+        setEndTime("");
+        setCorrectAnswer("");
+        setSuccessMsg(
+          `✅ "${created.correctOption?.text}" eklendi!`
+        );
+        fetchMemes();
+        setTimeout(() => setSuccessMsg(""), 4000);
+      } else {
+        const data = await res.json();
+        alert(`Hata: ${data.error}`);
+      }
+    } catch {
+      alert("Sunucu hatası!");
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // 6. MEME SİLME FONKSİYONU
+  // Delete meme
   const handleDeleteMeme = async (id: string) => {
-    if (!window.confirm('Bu soruyu silmek istediğinize emin misiniz?')) return;
-    
+    if (!window.confirm("Bu meme'i silmek istediğinden emin misin?")) return;
+
     const res = await fetch(`/api/admin/memes?id=${id}`, {
-      method: 'DELETE',
-      headers: { 'x-admin-password': password }
+      method: "DELETE",
+      headers: { "x-admin-password": password },
     });
 
-    if (res.ok) fetchData();
-    else alert('Meme silinirken bir hata oluştu.');
+    if (res.ok) fetchMemes();
+    else alert("Silinemedi!");
   };
 
-  return (
-    <main id="admin-page" className="admin-container" style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
-      <h1 className="admin-title">Meme Guesser - Admin Panel</h1>
+  // ============================================
+  // RENDER
+  // ============================================
 
-      {!isAuthenticated ? (
-        <div id="admin-auth" className="admin-auth-section" style={{ border: '1px solid #ccc', padding: '1rem', borderRadius: '8px' }}>
-          <form onSubmit={handleLogin}>
-            <label className="admin-label">Admin Şifresi: </label>
-            <input 
-              className="admin-password-input" 
-              type="password" 
+  if (!isAuthenticated) {
+    return (
+      <main className="admin-page">
+        <div className="admin-login-box">
+          <h1 className="admin-login-title">🔐 Admin Paneli</h1>
+          <p className="admin-login-desc">
+            Meme yönetim paneline erişmek için şifre girin.
+          </p>
+          <form onSubmit={handleLogin} className="admin-login-form">
+            <input
+              type="password"
+              className="admin-input"
+              placeholder="Admin şifresi..."
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              style={{ marginRight: '10px', padding: '5px' }}
+              autoFocus
             />
-            <button className="admin-login-btn" type="submit" style={{ padding: '5px 15px' }}>Giriş</button>
+            <button
+              type="submit"
+              className="admin-btn admin-btn-primary"
+              disabled={loginLoading || !password}
+            >
+              {loginLoading ? "Kontrol ediliyor..." : "Giriş Yap"}
+            </button>
           </form>
-          {loginError && <p style={{ color: 'red' }}>{loginError}</p>}
+          {loginError && <p className="admin-error-text">{loginError}</p>}
         </div>
-      ) : (
-        <div id="admin-panels">
-          <p style={{ color: 'green', fontWeight: 'bold' }}>Giriş başarılı! Sistem aktif. 🔓</p>
+      </main>
+    );
+  }
 
-          {/* ================= ŞIK YÖNETİMİ ================= */}
-          <section id="option-management" className="admin-section" style={{ marginTop: '2rem', border: '1px solid #ccc', padding: '1rem', borderRadius: '8px' }}>
-            <h2>1. Şık (Cevap) Havuzu Yönetimi</h2>
-            <form onSubmit={handleAddOption} style={{ marginBottom: '1rem' }}>
-              <input 
-                className="admin-input" 
-                placeholder="Örn: Kedi mi köpek mi?" 
-                value={optionText}
-                onChange={(e) => setOptionText(e.target.value)}
-                style={{ padding: '5px', marginRight: '10px', width: '60%' }}
-              />
-              <button className="admin-btn" type="submit" style={{ padding: '5px 15px' }}>Şık Ekle</button>
-            </form>
-            
-            <div style={{ maxHeight: '200px', overflowY: 'auto', background: '#f9f9f9', padding: '10px', borderRadius: '5px' }}>
-              {options.length === 0 ? <p>Henüz şık eklenmemiş.</p> : (
-                <ul style={{ listStyleType: 'none', padding: 0 }}>
-                  {options.map((opt) => (
-                    <li key={opt.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', borderBottom: '1px solid #eee' }}>
-                      <span>{opt.text}</span>
-                      <button onClick={() => handleDeleteOption(opt.id)} style={{ color: 'red', cursor: 'pointer', background: 'none', border: 'none' }}>Sil</button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+  return (
+    <main className="admin-page">
+      <div className="admin-layout">
+        {/* --- HEADER --- */}
+        <header className="admin-header">
+          <div>
+            <h1 className="admin-page-title">Meme Guesser — Admin</h1>
+            <p className="admin-page-subtitle">
+              Meme ekle, yönet, sil. Her soru 1 doğru cevaba sahip.
+            </p>
+          </div>
+          <div className="admin-stats">
+            <div className="admin-stat">
+              <span className="admin-stat-value">{memeCount}</span>
+              <span className="admin-stat-label">Meme</span>
             </div>
-          </section>
+            <div className="admin-stat">
+              <span className="admin-stat-value">{uniqueAnswers}</span>
+              <span className="admin-stat-label">Şık</span>
+            </div>
+          </div>
+        </header>
 
-          {/* ================= MEME YÖNETİMİ ================= */}
-          <section id="meme-management" className="admin-section" style={{ marginTop: '2rem', border: '1px solid #ccc', padding: '1rem', borderRadius: '8px' }}>
-            <h2>2. Soru (Meme) Yönetimi</h2>
-            <form onSubmit={handleAddMeme} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '1rem' }}>
-              <input 
-                className="admin-input" 
-                placeholder="YouTube URL" 
-                value={youtubeUrl}
-                onChange={(e) => setYoutubeUrl(e.target.value)}
-                style={{ padding: '5px' }}
-              />
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <input 
-                  className="admin-input" 
-                  type="number" 
-                  placeholder="Başlangıç (sn)" 
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  style={{ padding: '5px', width: '50%' }}
-                />
-                <input 
-                  className="admin-input" 
-                  type="number" 
-                  placeholder="Bitiş (sn)" 
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  style={{ padding: '5px', width: '50%' }}
+        {/* --- MEME EKLEME FORMU --- */}
+        <section className="admin-card">
+          <h2 className="admin-card-title">Yeni Meme Ekle</h2>
+
+          <form onSubmit={handleAddMeme} className="admin-meme-form">
+            <div className="admin-form-row">
+              <div className="admin-form-group admin-form-group-wide">
+                <label className="admin-label">YouTube URL</label>
+                <input
+                  className="admin-input"
+                  type="text"
+                  placeholder="https://youtube.com/watch?v=... veya video ID"
+                  value={youtubeUrl}
+                  onChange={(e) => setYoutubeUrl(e.target.value)}
                 />
               </div>
-              <select 
-                className="admin-select" 
-                value={correctOptionId}
-                onChange={(e) => setCorrectOptionId(e.target.value)}
-                style={{ padding: '5px' }}
-              >
-                <option value="">Doğru cevabı seçin...</option>
-                {options.map((opt) => (
-                  <option key={opt.id} value={opt.id}>{opt.text}</option>
-                ))}
-              </select>
-              <button className="admin-btn" type="submit" style={{ padding: '8px', background: 'blue', color: 'white', border: 'none', cursor: 'pointer' }}>
-                Meme Ekle
-              </button>
-            </form>
-
-            <div style={{ maxHeight: '300px', overflowY: 'auto', background: '#f9f9f9', padding: '10px', borderRadius: '5px' }}>
-              {memes.length === 0 ? <p>Henüz meme eklenmemiş.</p> : (
-                <ul style={{ listStyleType: 'none', padding: 0 }}>
-                  {memes.map((meme) => (
-                    <li key={meme.id} style={{ marginBottom: '15px', borderBottom: '1px solid #ccc', paddingBottom: '10px' }}>
-                      <div><strong>URL:</strong> {meme.youtubeUrl}</div>
-                      <div><strong>Zaman:</strong> {meme.startTime}s - {meme.endTime}s</div>
-                      <div><strong>Cevap:</strong> {meme.correctOption?.text || "Bilinmiyor"}</div>
-                      
-                      <button onClick={() => handleDeleteMeme(meme.id)} style={{ color: 'red', marginTop: '5px', cursor: 'pointer', background: 'none', border: 'none' }}>Meme Sil</button>
-                    </li>
-                  ))}
-                </ul>
-              )}
             </div>
-          </section>
 
-          <section id="leaderboard-moderation" className="admin-section" style={{ marginTop: '2rem', border: '1px solid #ccc', padding: '1rem', borderRadius: '8px' }}>
-            <h2>3. Liderlik Tablosu Moderasyonu</h2>
-            
-            <p>Leaderboard sistemi eklendiğinde burası aktifleşecek...</p>
-          </section>
+            {/* YouTube Önizleme */}
+            {videoId && (
+              <div className="admin-preview">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`}
+                  alt="Video önizleme"
+                  className="admin-preview-thumb"
+                />
+                <span className="admin-preview-id">{videoId}</span>
+              </div>
+            )}
 
-        </div>
-      )}
+            <div className="admin-form-row">
+              <div className="admin-form-group">
+                <label className="admin-label">Başlangıç (saniye)</label>
+                <input
+                  className="admin-input"
+                  type="number"
+                  min={0}
+                  placeholder="0"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                />
+              </div>
+              <div className="admin-form-group">
+                <label className="admin-label">Bitiş (saniye)</label>
+                <input
+                  className="admin-input"
+                  type="number"
+                  min={0}
+                  placeholder="10"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                />
+              </div>
+              <div className="admin-form-group admin-form-group-wide">
+                <label className="admin-label">Doğru Cevap</label>
+                <input
+                  className="admin-input"
+                  type="text"
+                  placeholder='Örn: "Yazık Kafana", "Rickroll"...'
+                  value={correctAnswer}
+                  onChange={(e) => setCorrectAnswer(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="admin-btn admin-btn-primary admin-btn-full"
+              disabled={submitting}
+            >
+              {submitting ? "Ekleniyor..." : "Meme Ekle"}
+            </button>
+
+            {successMsg && (
+              <div className="admin-success-toast">{successMsg}</div>
+            )}
+          </form>
+        </section>
+
+        {/* --- MEME LİSTESİ --- */}
+        <section className="admin-card">
+          <div className="admin-card-header">
+            <h2 className="admin-card-title">
+              Kayıtlı Memeler ({memeCount})
+            </h2>
+            <button
+              onClick={fetchMemes}
+              className="admin-btn admin-btn-ghost"
+              disabled={loading}
+            >
+              {loading ? "Yükleniyor..." : "Yenile ↻"}
+            </button>
+          </div>
+
+          {memes.length === 0 ? (
+            <div className="admin-empty">
+              <p>Henüz meme eklenmemiş. Yukarıdaki formu kullan!</p>
+            </div>
+          ) : (
+            <div className="admin-meme-grid">
+              {memes.map((meme) => {
+                const vid = extractVideoId(meme.youtubeUrl);
+                return (
+                  <div key={meme.id} className="admin-meme-item">
+                    <div className="admin-meme-item-thumb">
+                      {vid && (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={`https://img.youtube.com/vi/${vid}/mqdefault.jpg`}
+                          alt={meme.correctOption?.text || "Meme"}
+                        />
+                      )}
+                    </div>
+                    <div className="admin-meme-item-info">
+                      <div className="admin-meme-answer">
+                        {meme.correctOption?.text || "—"}
+                      </div>
+                      <div className="admin-meme-meta">
+                        {meme.startTime}s — {meme.endTime}s
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteMeme(meme.id)}
+                      className="admin-btn admin-btn-danger"
+                      title="Sil"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </div>
     </main>
   );
 }
