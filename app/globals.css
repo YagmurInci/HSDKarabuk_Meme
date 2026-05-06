@@ -548,6 +548,27 @@ body {
   /* No extra styles needed */
 }
 
+.leaderboard-countdown {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  padding: 0.5rem 0;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.leaderboard-countdown strong {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.leaderboard-correct {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-left: 0.5rem;
+  flex-shrink: 0;
+}
+
 .leaderboard-title {
   font-size: 0.875rem;
   font-weight: 700;

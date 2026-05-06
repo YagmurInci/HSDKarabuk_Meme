@@ -60,12 +60,26 @@ model LeaderboardEntry {
   username     String   /// Oyuncu adı (validasyonlu)
   score        Int      /// Hesaplanmış skor (server-side)
   correctCount Int      /// Doğru cevap sayısı
-  totalTime    Int      /// Toplam süre (milisaniye)
+  totalTime    Int      /// Toplam düşünme süresi (milisaniye, video izleme hariç)
   sessionId    String   @unique /// Hangi GameSession'dan geldiği
   createdAt    DateTime @default(now())
 
-  session      GameSession @relation(fields: [sessionId], references: [id])
+  session      GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([score(sort: Desc)]) /// Sıralama için index
   @@map("leaderboard_entries")
 }
+
+/// 3 saatlik periyotlarla kaydedilen leaderboard arşivi
+model LeaderboardArchive {
+  id         String   @id @default(cuid())
+  snapshot   String   /// JSON: Top 50 oyuncunun [{username, score, correctCount, totalTime}]
+  entryCount Int      /// Arşivlenen toplam kayıt sayısı
+  topPlayer  String?  /// 1. sıradaki oyuncu
+  topScore   Int      @default(0) /// 1. sıradaki skor
+  archivedAt DateTime @default(now()) /// Arşivleme zamanı
+
+  @@index([archivedAt(sort: Desc)])
+  @@map("leaderboard_archives")
+}
+
