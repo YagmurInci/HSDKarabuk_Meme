@@ -11,7 +11,7 @@
 
 **Huawei Student Developers (HSD) Karabük Üniversitesi** stand etkinlikleri için geliştirilmiş; popüler Türkçe ve global YouTube meme kliplerini içeren, zamana karşı yarışılan interaktif tahmin oyunu.
 
-[Canlı Demo](#) • [Özellikler](#-özellikler) • [Mimari & Güvenlik](#-mimari-ve-anti-cheat-sistemi) • [Kurulum](#-kurulum-ve-%C3%A7al%C4%B1%C5%9Ft%C4%B1rma) • [Katkıda Bulunanlar](#-katk%C4%B1da-bulunanlar-contributors)
+[Canlı Demo](#) • [Özellikler](#-özellikler) • [Mimari & Güvenlik](#-mimari-ve-anti-cheat-sistemi) • [Kurulum](#-kurulum-ve-%C3%A7al%C4%B1%C5%9Ft%C4%B1rma)
 
 </div>
 
@@ -35,21 +35,6 @@ Oyuncular, 10 farklı meme klibinden kesitler izler ve verilen 4 seçenek arası
 - 🔞 **Türkçe Küfür & Argo Filtresi**: Oyuncu adları 90pixel algoritması ile taranarak argo veya uygunsuz girişler engellenir.
 - 🛠️ **Gelişmiş Yönetici (Backoffice) Paneli**: YouTube linkinden tek tıkla meme ekleme, doğru şık eşleme ve Google Sheets üzerinden toplu veri içe aktarma desteği.
 - 📱 **Mobil ve Shorts Uyumluluğu**: Dikey ve yatay videolar için optimize edilmiş, dark glassmorphism temalı responsive kullanıcı arayüzü.
-
----
-
-## 👥 Katkıda Bulunanlar (Contributors)
-
-Bu proje **HSD Karabük** ekibi tarafından iş birliği ve modüler mimari prensipleriyle geliştirilmiştir:
-
-| Profil | Geliştirici | Rol ve Sorumluluk Alanları |
-| :---: | :--- | :--- |
-| <a href="https://github.com/YagmurInci"><img src="https://github.com/YagmurInci.png" width="60" height="60" style="border-radius:50%" alt="Yağmur İnci"/></a> | **[Yağmur İnci](https://github.com/YagmurInci)** | **Oyun Motoru & Frontend Entegrasyon Lideri**<br/>• `app/(game)/play`: 10 soruluk oyun akışı, state yönetimi ve timer mimarisi<br/>• YouTube IFrame API entegrasyonu ve video senkronizasyonu<br/>• Arka plan gerilim müziği senkronizasyonu ve ses/mute kontrolleri<br/>• Terminal log ve akış optimizasyonları |
-| <a href="https://github.com/sicloid"><img src="https://github.com/sicloid.png" width="60" height="60" style="border-radius:50%" alt="Şükrü Biçer"/></a> | **[Şükrü Biçer](https://github.com/sicloid)** | **Baş Mimar & DevSecOps**<br/>• Sistem mimarisi ve Prisma ORM 7 + PostgreSQL veri tabanı tasarımı<br/>• HMAC imzalı Anti-Cheat oturum ve skor doğrulama katmanı<br/>• Backend REST API route handlers (`/api/game/*`, `/api/leaderboard/*`, `/api/admin/*`)<br/>• Vercel production ve build optimizasyonları |
-| <a href="https://github.com/mlhgks0868"><img src="https://github.com/mlhgks0868.png" width="60" height="60" style="border-radius:50%" alt="Melih Göksu"/></a> | **[Melih Göksu](https://github.com/mlhgks0868)** | **UI/UX Tasarımı & Proje Koordinasyonu**<br/>• Dark Glassmorphism arayüz teması ve Tailwind CSS tasarım sistemi<br/>• Genel görsel kimlik, mikro-animasyonlar ve tipografi<br/>• Takım içi koordinasyon ve git operasyonları |
-| <a href="https://github.com/cmrsakdn"><img src="https://github.com/cmrsakdn.png" width="60" height="60" style="border-radius:50%" alt="Cemre Sakadın"/></a> | **[Cemre Sakadın](https://github.com/cmrsakdn)** | **Auth & Landing Ekranı**<br/>• `app/(auth)/login`: Kullanıcı karşılama ve kayıt ekranı<br/>• LocalStorage kullanıcı oturum yönetimi<br/>• 90pixel küfür ve uygunsuz takma isim filtresi entegrasyonu |
-| <a href="https://github.com/neslily"><img src="https://github.com/neslily.png" width="60" height="60" style="border-radius:50%" alt="Neslihan"/></a> | **[Neslihan](https://github.com/neslily)** | **Liderlik Tablosu (Leaderboard)**<br/>• `app/components/leaderboard.tsx`: Dinamik liderlik tablosu bileşeni<br/>• Stand etkinliği 3 saatlik periyot geri sayım sayacı<br/>• Sıralama, süre formatlama ve anlık veri polling sistemi |
-| <a href="https://github.com/"><img src="https://github.com/ghost.png" width="60" height="60" style="border-radius:50%" alt="Ceyda"/></a> | **Ceyda** | **Admin Paneli & İçerik Yönetimi**<br/>• `app/(admin)/backoffice`: Video ve şık ekleme arayüzü<br/>• CRUD işlemleri ve Google Sheets veri aktarımı yönetimi |
 
 ---
 
